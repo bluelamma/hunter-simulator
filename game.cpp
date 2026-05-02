@@ -61,13 +61,111 @@ void Projectile::update(float dt, sf::RenderWindow &window) {
     shape.move(velocity * dt);
 }
 
+// ----------------------
+// -------- Hare --------
+// ----------------------
+Hare::Hare(float startX, float startY, Player *player) 
+    : GameObject(startX, startY), animation(46.0f, 36.0f, 0.15f), facingRow(0), moveTimer(0.0f), moveInterval(0.0f), velocity({0.0f, 0.0f}), speed(50.0f), playerTarget(player) {
+    if (!texture.loadFromFile("textures/Hare.png")) {
+        std::cerr << "Couldn't load hare texture \n";
+    } else {
+        sprite.setTexture(texture, true); 
+    }
+
+    sprite.setScale(sf::Vector2f({1.5f, 1.5f}));
+}
+
+void Hare::draw(sf::RenderWindow &window) {
+    window.draw(sprite);
+}
+
+void Hare::update(float dt, sf::RenderWindow &window) {
+    int startFrame = 0;
+    int endFrame = 1;
+    isMoving = false;
+
+    sf::Vector2f harePos = sprite.getPosition();
+    sf::Vector2f playerPos = playerTarget->getPosition();
+
+    // Distance between hare and the player
+    float dx = harePos.x - playerPos.x;
+    float dy = harePos.y - playerPos.y;
+    float distance = std::sqrt(dx * dx + dy * dy);
+
+    float fleeRadius = playerTarget->isAttacking() ? 800.0f : 300.0f;
+
+
+    if (distance <= fleeRadius) {  
+        // Vector pointing away from the player
+        sf::Vector2f dir(dx, dy); 
+
+        float length = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+        if (length != 0.0f) {
+            dir.x /= length;
+            dir.y /= length;
+        }
+
+        velocity = dir * (speed * 5.0f);
+
+        if (velocity.x < 0) {
+            facingRow = 0; // Left
+        } else if (velocity.x > 0) {
+            facingRow = 1; // Right
+        }
+
+        endFrame = 1;
+
+        moveTimer = 0.0f;
+    } else {
+        moveTimer += dt;
+
+        if (moveTimer >= moveInterval) {
+            moveTimer = 0.0f;
+
+            float dirX = static_cast<float>((rand() % 3) - 1); 
+            float dirY = static_cast<float>((rand() % 3) - 1);
+
+            float length = std::sqrt(dirX * dirX + dirY * dirY);
+            if (length != 0.0f) {
+                dirX /= length;
+                dirY /= length;
+            }
+
+            velocity = sf::Vector2f(dirX * speed, dirY * speed);
+
+            if(rand() % 5 <= 1) {
+                velocity = sf::Vector2f(0.0f, 0.0f);
+            }
+
+            if (velocity.x < 0) {
+                facingRow = 0; // Left
+            } else if (velocity.x > 0) {
+                facingRow = 1; // Right
+            }
+
+            moveInterval = 1.0f + static_cast<float>(rand() % 3);
+            }
+        }
+    
+    if(velocity.x != 0.0f || velocity.y != 0.0f) {
+            isMoving = true;
+        } 
+
+    if(isMoving) {
+        sprite.move(velocity * dt);
+    } else {
+        endFrame = 0;
+    }
+
+    animation.update(facingRow, startFrame, endFrame, dt, sprite);
+}
 
 // ----------------------
 // ------- Player -------
 // ----------------------
 Player::Player(float startX, float startY) 
 : GameObject(startX, startY), animation(31, 41, 0.25f), facingRow(0) {
-    if (!texture.loadFromFile("textures/player.png")) {
+    if (!texture.loadFromFile("textures/Player.png")) {
         std::cerr << "Couldn't load player texture \n";
     } else {
         sprite.setTexture(texture, true); 
@@ -82,6 +180,14 @@ void Player::draw(sf::RenderWindow &window) {
     for(const auto &projectile : projectiles) {
         projectile->draw(window);
     }
+}
+
+bool Player::isAttacking() const {
+    return movement_cooldown > 0.0f;
+}
+
+sf::Vector2f Player::getPosition() const {
+    return sprite.getPosition();
 }
 
 void Player::update(float dt, sf::RenderWindow &window) {
@@ -173,12 +279,17 @@ void Player::update(float dt, sf::RenderWindow &window) {
 // ----------------------
 // ----- Game Logic -----
 // ----------------------
-Game::Game() : window(sf::VideoMode({800, 800}),  "Hunter Simulator") {}
+Game::Game() : window(sf::VideoMode({1920, 1080}),  "Hunter Simulator") {}
 
 void Game::init() {
+    srand(static_cast<unsigned int>(time(nullptr)));
     GameObjects.clear();
 
-    GameObjects.emplace_back(std::make_unique<Player>(350.0f, 350.0f));
+    auto player = std::make_unique<Player>(0.0f, 500.0f);
+    Player *playerPtr = player.get();
+
+    GameObjects.emplace_back(std::move(player));
+    GameObjects.emplace_back(std::make_unique<Hare>(800.0f, 600.0f, playerPtr));
 }
 
 void Game::run() {
