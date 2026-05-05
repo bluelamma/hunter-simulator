@@ -55,23 +55,69 @@ unsigned int screenHeight = desktop.size.y;
 Game::Game() : window(sf::VideoMode({screenWidth, screenHeight}),  "Hunter Simulator") {}
 
 void Game::init() {
-    // Allows random behavior of entities
     srand(static_cast<unsigned int>(time(nullptr)));
-    GameObjects.clear();
+    camera.setSize({1280, 720});
 
-    // Creates the map
-    auto map = std::make_unique<TileMap>("map/tiles.png", "map/overworld.csv", 300, 150, 64);
-    GameObject::world = map.get(); // makes it visible by all gameObjects 
-    GameObjects.emplace_back(std::move(map));
+    // Start game in the Overworld
+    loadLocation(LocationID::Overworld, sf::Vector2f(tileSize * 250.0f, tileSize * 125.0f));
+}
 
-    // Creates the player
-    auto player = std::make_unique<Player>((tileSize * 250), (tileSize * 125));
-    trackedPlayer = player.get();
+void Game::loadLocation(LocationID dest, sf::Vector2f spawnPoint) {
+    GameObjects.clear(); // Deletes the old player, map, and entities
+    currentLocation = dest;
 
-    GameObjects.emplace_back(std::move(player));
-    GameObjects.emplace_back(std::make_unique<Hare>(((tileSize * 255)), ((tileSize * 125)), trackedPlayer));
+    if (dest == LocationID::Overworld) {
+        MapLoader::loadOverworld(GameObjects, trackedPlayer, tileSize, spawnPoint);
+        camera.setSize({1280, 720});
+    } else if (dest == LocationID::Cave) {
+        MapLoader::loadCave(GameObjects, trackedPlayer, tileSize, spawnPoint);
+        camera.setSize({680, 360});
+    }
+}
 
-    camera.setSize({640, 360});
+void Game::update(float dt) {
+    bool switchLevel = false;
+    LocationID nextDest;
+    sf::Vector2f nextSpawn;
+
+    for (const auto &object : GameObjects) {
+        object->update(dt, window);
+        
+        // Identifies if the object is a SwitchLocation and if the player triggered it
+        SwitchLocation* switchObj = dynamic_cast<SwitchLocation*>(object.get());
+        if (switchObj && switchObj->hasPlayerEntered()) {
+            switchLevel = true;
+            nextDest = switchObj->getDestination();
+            nextSpawn = switchObj->getSpawnPoint();
+        }
+    }
+
+    if (switchLevel) {
+        loadLocation(nextDest, nextSpawn);
+    }
+
+    // Camera logic
+    if (trackedPlayer != nullptr) {
+        float playerX = trackedPlayer->getPosition().x;
+        float playerY = trackedPlayer->getPosition().y;
+
+        float halfWidth = camera.getSize().x / 2.0f;
+        float halfHeight = camera.getSize().y / 2.0f;
+
+        // Set boundaries based on current map size
+        // true = overworld values // false = cave values (for now)
+        float mapWidthPixels = (currentLocation == LocationID::Overworld ? 300.0f : 20.0f) * tileSize;
+        float mapHeightPixels = (currentLocation == LocationID::Overworld ? 150.0f : 40.0f) * tileSize;
+
+        // std::max ensures the camera center doesn't break if the map is smaller than the window
+        float maxX = std::max(halfWidth, mapWidthPixels - halfWidth);
+        float maxY = std::max(halfHeight, mapHeightPixels - halfHeight);
+
+        float cameraX = std::clamp(playerX, halfWidth, maxX);
+        float cameraY = std::clamp(playerY, halfHeight, maxY);
+
+        camera.setCenter({cameraX, cameraY});
+    }
 }
 
 void Game::run() {
@@ -79,8 +125,10 @@ void Game::run() {
 
     sf::Clock clock;
 
+    // Main game loop
     while (window.isOpen()) {
 
+        // Restarts the clock to get delta time
         sf::Time dt = clock.restart();
 
         while (auto event = window.pollEvent()) {
@@ -89,35 +137,6 @@ void Game::run() {
         }
         update(dt.asSeconds());
         render();
-    }
-}
-
-void Game::update(float dt) {
-    for (const auto &object : GameObjects) {
-        object->update(dt, window);
-    }
-
-    // Camera logic
-    if (trackedPlayer != nullptr) {
-        
-        float playerX = trackedPlayer->getPosition().x;
-        float playerY = trackedPlayer->getPosition().y;
-
-        // Calculates the boundaries
-        float halfWidth = camera.getSize().x / 2.0f;
-        float halfHeight = camera.getSize().y / 2.0f;
-
-        // The map is 300 tiles x 64 pixels (19,200) wide
-        // and 150 tiles x 64 pixels (9,600) high
-        float mapWidthPixels = 300.0f * 64.0f;
-        float mapHeightPixels = 150.0f * 64.0f;
-
-        // Camera's clamped position
-        // std::clamp(value_to_check, absolute_minimum, absolute_maximum)
-        float cameraX = std::clamp(playerX, halfWidth, mapWidthPixels - halfWidth);
-        float cameraY = std::clamp(playerY, halfHeight, mapHeightPixels - halfHeight);
-
-        camera.setCenter({cameraX, cameraY}); 
     }
 }
 

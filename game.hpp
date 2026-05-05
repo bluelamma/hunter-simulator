@@ -9,6 +9,14 @@
 #include <cstdlib> // For randomness
 #include <algorithm> // Required for std::clamp
 
+// Used by MapLoader
+enum class LocationID {
+    Overworld,
+    Cave,
+    Home,
+    Shop
+};
+
 // Was necessary to split the files like I did and still make it work
 class Player;
 class TileMap;
@@ -33,6 +41,7 @@ protected:
     float width;
     float height;
     bool active;
+    bool solid;
     sf::Texture texture;
     sf::Sprite sprite;
 public:
@@ -48,18 +57,20 @@ public:
 
 class Game {
 private:
-    int tileSize = 64; // Used to make spawn point of entities on specified tiles
+    int tileSize = 64; // Used to make spawn point of entities on specified tiles, load maps correctly
 
     sf::RenderWindow window;
     std::vector<std::unique_ptr<GameObject>> GameObjects;
 
     sf::View camera;
-    Player* trackedPlayer;
+    Player* trackedPlayer; // Used by objects to know player's position
+    LocationID currentLocation; // Tracks which map is active
 
-    void init(); // loads the player and map, sets camera size
+    void init();
+    void loadLocation(LocationID dest, sf::Vector2f spawnPoint);
 public:
     Game();
     void run();
     void render();
-    void update(float dt);
+    void update(float dt); // camera here
 };

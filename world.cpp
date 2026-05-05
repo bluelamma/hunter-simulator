@@ -1,11 +1,125 @@
 #include "world.hpp"
 
-TileMap::TileMap(const std::string& textureFile, const std::string& csvFile, int width, int height, int tSize) 
-    : GameObject(0, 0), mapWidth(width), mapHeight(height), tileSize(tSize) {
+// ----------------------
+// --- SwitchLocation ---
+// ----------------------
+SwitchLocation::SwitchLocation(float startX, float startY, const std::string& texturePath, Player* player, 
+    LocationID destination, sf::Vector2f spawn, sf::Vector2f entrance_dimensions, sf::Vector2f hitboxOffset) 
+    : GameObject(startX, startY), playerTarget(player), playerEntered(false), destinationLevel(destination), spawnPoint(spawn) {
+    
+    // Texture
+    if (!texture.loadFromFile(texturePath)) {
+        std::cerr << "Couldn't load texture: " << texturePath << "\n";
+    } else {
+        sprite.setTexture(texture, true); 
+    }
+
+    // Hitbox
+    entranceHitbox.setSize(entrance_dimensions);
+    entranceHitbox.setPosition(sf::Vector2f(startX + hitboxOffset.x, startY + hitboxOffset.y));
+    entranceHitbox.setFillColor(sf::Color(255, 0, 0, 100)); 
+}
+
+void SwitchLocation::draw(sf::RenderWindow &window) {
+    window.draw(sprite);
+    window.draw(entranceHitbox); // uncomment for easier checking if the thing aligns properly
+}
+
+void SwitchLocation::update(float dt, sf::RenderWindow &window) {
+    sf::Vector2f locPos = sprite.getPosition();
+    sf::Vector2f playerPos = playerTarget->getPosition();
+
+    float playerCenterX = playerPos.x + (15 / 2.0f);
+    float playerCenterY = playerPos.y + 32;
+
+    // Checks if player is inside the hitbox
+    bool isInside = entranceHitbox.getGlobalBounds().contains({playerCenterX, playerCenterY});
+
+    // If inside the hitbox and interacting
+    if (isInside && sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::E)) {
+        playerEntered = true;
+    }
+}
+
+bool SwitchLocation::hasPlayerEntered() const {
+    return playerEntered;
+}
+
+LocationID SwitchLocation::getDestination() const {
+    return destinationLevel;
+}
+
+sf::Vector2f SwitchLocation::getSpawnPoint() const {
+    return spawnPoint;
+}
+
+
+// ----------------------
+// ------ MapLoader -----
+// ----------------------
+void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *&trackedPlayer, int tileSize, sf::Vector2f spawnPoint) {
+    // Player // Player is added at the end so texture is on top
+    auto player = std::make_unique<Player>(tileSize * 250, tileSize * 125);
+    trackedPlayer = player.get(); // Updates the Game's trackedPlayer pointer
+
+    // Map
+    auto map = std::make_unique<TileMap>("maps/tiles_overworld.png", "maps/overworld.csv", 300, 150, tileSize, std::vector<int>{3});
+    GameObject::world = map.get(); 
+    gameObjects.emplace_back(std::move(map));
+
+    // Objects (cave)
+    gameObjects.emplace_back(std::make_unique<SwitchLocation>(
+        tileSize * 253, tileSize * 125, // Spawn point of the object
+        "objects/cave.png", 
+        trackedPlayer, 
+        LocationID::Cave, 
+        sf::Vector2f({tileSize * 8.0f, tileSize * 38.0f}), // Spawn point of the player after interaction
+        sf::Vector2f({220.0f, 130.0f}), // Dimensions of the entrance 
+        sf::Vector2f({168.0f, 128.0f}) // Offset of the entrance 
+    ));
+
+    // Entities
+    gameObjects.emplace_back(std::make_unique<Hare>(tileSize * 255, tileSize * 125, trackedPlayer));
+
+    // Adds player
+    gameObjects.emplace_back(std::move(player));
+}
+
+void MapLoader::loadCave(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *&trackedPlayer, int tileSize, sf::Vector2f spawnPoint) {
+    auto player = std::make_unique<Player>(spawnPoint.x, spawnPoint.y);
+    trackedPlayer = player.get(); 
+
+    // Loads the 20x40 Cave map
+    auto map = std::make_unique<TileMap>("maps/tiles_cave.png", "maps/cave.csv", 20, 40, tileSize, std::vector<int>{1});
+    GameObject::world = map.get(); 
+    gameObjects.emplace_back(std::move(map));
+
+    // Cave exit (to go back to overworld)
+    gameObjects.emplace_back(std::make_unique<SwitchLocation>(
+        tileSize * 8, tileSize * 39, // Spawn point of the object
+        "objects/cave_exit.png",
+        trackedPlayer, 
+        LocationID::Overworld, 
+        sf::Vector2f({tileSize * 253.0f, tileSize * 126.0f}), // Spawn point of the player after interaction
+        sf::Vector2f({tileSize * 3.0f, tileSize * 1.0f}), // Dimensions of the entrance 
+        sf::Vector2f({0.0f, 0.0f}) // Offset of the entrance 
+    ));
+
+    gameObjects.emplace_back(std::move(player));
+}
+
+
+
+// ----------------------
+// ------- TileMap ------
+// ----------------------
+TileMap::TileMap(const std::string &textureFile, const std::string &csvFile, int width, int height, int tSize, std::vector<int> solids) 
+    : GameObject(0, 0), mapWidth(width), mapHeight(height), tileSize(tSize), solidTiles(solids) {
     // Loads the texture
     if (!texture.loadFromFile(textureFile)) {
         std::cerr << "Couldn't load the tileset\n";
     }
+    texture.setSmooth(false);
 
     tilesetColumns = texture.getSize().x / tileSize;
 
@@ -50,7 +164,7 @@ TileMap::TileMap(const std::string& textureFile, const std::string& csvFile, int
             // A pointer to the 6 vertices needed for this specific tile
             sf::Vertex* triangles = &tile_vertices[(i + j * mapWidth) * 6];
 
-            // Defines the 6 corners of the two triangles on the SCREEN
+            // Defines the 6 corners of the two triangles on the screen
             // Triangle 1 (Top-Left, Top-Right, Bottom-Left)
             triangles[0].position = sf::Vector2f(i * tileSize, j * tileSize);
             triangles[1].position = sf::Vector2f((i + 1) * tileSize, j * tileSize);
@@ -62,15 +176,18 @@ TileMap::TileMap(const std::string& textureFile, const std::string& csvFile, int
             triangles[5].position = sf::Vector2f((i + 1) * tileSize, (j + 1) * tileSize);
 
             // Defines the 6 corners of the two triangles on the texture
-            // Triangle 1
-            triangles[0].texCoords = sf::Vector2f(tu * tileSize, tv * tileSize);
-            triangles[1].texCoords = sf::Vector2f((tu + 1) * tileSize, tv * tileSize);
-            triangles[2].texCoords = sf::Vector2f(tu * tileSize, (tv + 1) * tileSize);
-            
-            // Triangle 2
-            triangles[3].texCoords = sf::Vector2f(tu * tileSize, (tv + 1) * tileSize);
-            triangles[4].texCoords = sf::Vector2f((tu + 1) * tileSize, tv * tileSize);
-            triangles[5].texCoords = sf::Vector2f((tu + 1) * tileSize, (tv + 1) * tileSize);
+            // Inset fixed blue streaks appearing between tiles, it prevents the gpu from taking pixels of neighbouring tile
+            float inset = 0.1f; 
+
+            // Triangle 1 (Top-Left, Top-Right, Bottom-Left)
+            triangles[0].texCoords = sf::Vector2f(tu * tileSize + inset, tv * tileSize + inset);
+            triangles[1].texCoords = sf::Vector2f((tu + 1) * tileSize - inset, tv * tileSize + inset);
+            triangles[2].texCoords = sf::Vector2f(tu * tileSize + inset, (tv + 1) * tileSize - inset);
+
+            // Triangle 2 (Bottom-Left, Top-Right, Bottom-Right)
+            triangles[3].texCoords = sf::Vector2f(tu * tileSize + inset, (tv + 1) * tileSize - inset);
+            triangles[4].texCoords = sf::Vector2f((tu + 1) * tileSize - inset, tv * tileSize + inset);
+            triangles[5].texCoords = sf::Vector2f((tu + 1) * tileSize - inset, (tv + 1) * tileSize - inset);
         }
     }
 }
@@ -86,16 +203,16 @@ void TileMap::draw(sf::RenderWindow &window) {
 }
 
 bool TileMap::isSolid(float pixelX, float pixelY) const {
-    // Pixel coordinates -> Tile Grid coordinates
     int tileX = static_cast<int>(pixelX / tileSize);
     int tileY = static_cast<int>(pixelY / tileSize);
 
-    // Finds out what tile ID is at this location
-    int tileID = mapData[tileX + tileY * mapWidth];
-
-    if (tileID == 3) { 
-        return true; // Block movement
+    // Prevent walking out of bounds
+    if (tileX < 0 || tileX >= mapWidth || tileY < 0 || tileY >= mapHeight) {
+        return true; 
     }
 
-    return false; // Movement allowed
+    int tileID = mapData[tileX + tileY * mapWidth];
+
+    // Checks if the tileID exists in solidTiles list
+    return std::find(solidTiles.begin(), solidTiles.end(), tileID) != solidTiles.end();
 }

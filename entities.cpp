@@ -33,7 +33,7 @@ Hare::Hare(float startX, float startY, Player *player)
         sprite.setTexture(texture, true); 
     }
 
-    sprite.setScale(sf::Vector2f({0.5f, 0.5f}));
+    sprite.setScale(sf::Vector2f({0.75f, 0.75f}));
 }
 
 void Hare::draw(sf::RenderWindow &window) {
@@ -66,8 +66,8 @@ void Hare::update(float dt, sf::RenderWindow &window) {
             dir.y /= length;
         }
 
-        // Runs 10 times faster than normally
-        velocity = dir * (speed * 10.0f);
+        // If attacked runs 6 times faster than normally
+        velocity = dir * (speed * 6.0f);
 
         if (velocity.x < 0) {
             facingRow = 0; // Left
@@ -120,7 +120,7 @@ void Hare::update(float dt, sf::RenderWindow &window) {
 
             sf::FloatRect bounds = sprite.getGlobalBounds();
                 
-            float offsetX = 0.0f;
+            float offsetX = 5.0f;
             float offsetY = bounds.size.y; 
 
             if (facingRow == 0) {
@@ -137,7 +137,14 @@ void Hare::update(float dt, sf::RenderWindow &window) {
             if (!GameObject::world->isSolid(feetX, feetY)) {
                 sprite.setPosition(nextPos);
             } else {
-                endFrame = 0;
+                // Try going up if doesn't work try going horizontally 
+                if (!GameObject::world->isSolid(currentPos.x + offsetX, feetY)) {
+                    sprite.setPosition({currentPos.x, nextPos.y});
+                } else if (!GameObject::world->isSolid(feetX, currentPos.y + offsetY)) {
+                    sprite.setPosition({nextPos.x, currentPos.y});
+                } else {
+                    endFrame = 0;
+                }
             }
         }
     } else {
@@ -180,7 +187,7 @@ sf::Vector2f Player::getPosition() const {
 }
 
 void Player::update(float dt, sf::RenderWindow &window) {
-    float speed = 200.0f * dt;
+    float speed = 1000.0f * dt;
     int startFrame = 0;
     int endFrame = 0;
 
@@ -207,7 +214,6 @@ void Player::update(float dt, sf::RenderWindow &window) {
         }
 
         // Collision detection
-        // was working for top left corner of png, offset points at the feet
         if (isMoving) {
             startFrame = 1;
             endFrame = 2;
@@ -216,25 +222,33 @@ void Player::update(float dt, sf::RenderWindow &window) {
 
                 sf::FloatRect bounds = sprite.getGlobalBounds();
                 
-                float offsetX = 0.0f;
+                // To keep the collision point at the bottom-center of the player
+                float offsetX = bounds.size.x / 2.0f; 
                 float offsetY = bounds.size.y; 
 
-                if (facingRow == 0) {
-                    offsetX = bounds.size.x / 2.0f + 14.0f; 
-                } else {
-                    offsetX = bounds.size.x / 2.0f - 14.0f; 
-                }
-
-                // coordinates of the feet
+                // coordinates of the feet for the next position
                 float feetX = nextPos.x + offsetX;
                 float feetY = nextPos.y + offsetY;
+                
+                sf::Vector2f currentPos = sprite.getPosition();
 
-                // Checks if the feet are touching water
+                // Movement without obstructions
                 if (!GameObject::world->isSolid(feetX, feetY)) {
                     sprite.setPosition(nextPos);
                 } else {
-                    startFrame = 0;
-                    endFrame = 0;
+                    // Try moving to the side
+                    if (!GameObject::world->isSolid(nextPos.x + offsetX, currentPos.y + offsetY)) {
+                        sprite.setPosition({nextPos.x, currentPos.y});
+                    } 
+                    // Try moving up or down
+                    else if (!GameObject::world->isSolid(currentPos.x + offsetX, nextPos.y + offsetY)) {
+                        sprite.setPosition({currentPos.x, nextPos.y});
+                    } 
+                    // Movement completely blocked
+                    else {
+                        startFrame = 0;
+                        endFrame = 0;
+                    }
                 }
             }
         }
@@ -254,19 +268,26 @@ void Player::update(float dt, sf::RenderWindow &window) {
             float spawnX = current_position.x;
             float spawnY = current_position.y + 20.0f;
 
+            sf::Vector2i mousePosInt = sf::Mouse::getPosition(window);
+            // Makes it work with movable camera
+            sf::Vector2f mousePos = window.mapPixelToCoords(mousePosInt);
+
+            // Turns the player depending on if he's clicking on the left or right side relative to the sprite
+            if (mousePos.x < spawnX + 30.0f) {
+                facingRow = 1;
+            } else {
+                facingRow = 0;
+            }
+
+            // adds offset so it shoots from the gun instead of the center
             if (facingRow == 0) {
                 spawnX += 60.0f;
             }
 
-            // Calculates the direcion the bullet is supposed to go
-            sf::Vector2i mousePosInt = sf::Mouse::getPosition(window);
-            // Makes it work with movable camera
-            sf::Vector2f mousePos = window.mapPixelToCoords(mousePosInt);
-            
-            // direction vector
+            // direction vector // calculates the direcion the bullet is supposed to go
             sf::Vector2f direction = mousePos - sf::Vector2f(spawnX, spawnY);
 
-            // makes direction x, y = 1 so I can multiply it by speed
+            // makes direction x, y = 1 at max so I can multiply it by speed
             float length = std::sqrt(direction.x * direction.x + direction.y * direction.y);
             if(length != 0.0f) {
                 direction.x /= length;
