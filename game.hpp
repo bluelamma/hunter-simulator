@@ -47,6 +47,8 @@ protected:
 public:
     GameObject(float startX, float startY);
 
+    void setSpriteScale(sf::Vector2f scale); // for resizing objects 
+
     virtual ~GameObject() = default;
     virtual void draw(sf::RenderWindow &window) = 0;
     virtual void update(float dt, sf::RenderWindow &window) {};
@@ -57,7 +59,14 @@ public:
 
 class Game {
 private:
-    int tileSize = 64; // Used to make spawn point of entities on specified tiles, load maps correctly
+    int tileSize = 64; // Used to make spawn point of things on specified tiles, load maps correctly
+
+    // --- Stuff for pausing the game ---
+    bool isPaused;
+    sf::Font font;
+    sf::Text pauseText;
+    sf::RectangleShape pauseOverlay;
+    // ----------------------------------
 
     sf::RenderWindow window;
     std::vector<std::unique_ptr<GameObject>> GameObjects;

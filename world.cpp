@@ -29,8 +29,9 @@ void SwitchLocation::update(float dt, sf::RenderWindow &window) {
     sf::Vector2f locPos = sprite.getPosition();
     sf::Vector2f playerPos = playerTarget->getPosition();
 
-    float playerCenterX = playerPos.x + (15 / 2.0f);
-    float playerCenterY = playerPos.y + 32;
+    // Player is scaled x2
+    float playerCenterX = playerPos.x + 31.0f;
+    float playerCenterY = playerPos.y + 32.0f;
 
     // Checks if player is inside the hitbox
     bool isInside = entranceHitbox.getGlobalBounds().contains({playerCenterX, playerCenterY});
@@ -57,8 +58,10 @@ sf::Vector2f SwitchLocation::getSpawnPoint() const {
 // ----------------------
 // ------ MapLoader -----
 // ----------------------
+
+// Overworld
 void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *&trackedPlayer, int tileSize, sf::Vector2f spawnPoint) {
-    // Player // Player is added at the end so texture is on top
+    // Player // Player is added at the end so the texture is on top
     auto player = std::make_unique<Player>(tileSize * 250, tileSize * 125);
     trackedPlayer = player.get(); // Updates the Game's trackedPlayer pointer
 
@@ -67,7 +70,7 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
     GameObject::world = map.get(); 
     gameObjects.emplace_back(std::move(map));
 
-    // Objects (cave)
+    // Objects
     gameObjects.emplace_back(std::make_unique<SwitchLocation>(
         tileSize * 253, tileSize * 125, // Spawn point of the object
         "objects/cave.png", 
@@ -78,14 +81,30 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
         sf::Vector2f({168.0f, 128.0f}) // Offset of the entrance 
     ));
 
+    auto home = std::make_unique<SwitchLocation>(        
+        tileSize * 258, tileSize * 125, // Spawn point of the object
+        "objects/home.png", 
+        trackedPlayer, 
+        LocationID::Home, 
+        sf::Vector2f({tileSize * 4.0f, tileSize * 8.0f}), // Spawn point of the player after interaction
+        sf::Vector2f({70.0f, 80.0f}), // Dimensions of the entrance 
+        sf::Vector2f({158.0f, 310.0f}) // Offset of the entrance );
+    );
+    home->setSpriteScale({6.0f, 6.0f});
+    gameObjects.emplace_back(std::move(home));
+
     // Entities
     gameObjects.emplace_back(std::make_unique<Hare>(tileSize * 255, tileSize * 125, trackedPlayer));
+
 
     // Adds player
     gameObjects.emplace_back(std::move(player));
 }
 
+
+// Cave
 void MapLoader::loadCave(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *&trackedPlayer, int tileSize, sf::Vector2f spawnPoint) {
+    // Player // Player is added at the end so the texture is on top
     auto player = std::make_unique<Player>(spawnPoint.x, spawnPoint.y);
     trackedPlayer = player.get(); 
 
@@ -101,12 +120,38 @@ void MapLoader::loadCave(std::vector<std::unique_ptr<GameObject>> &gameObjects, 
         trackedPlayer, 
         LocationID::Overworld, 
         sf::Vector2f({tileSize * 253.0f, tileSize * 126.0f}), // Spawn point of the player after interaction
-        sf::Vector2f({tileSize * 3.0f, tileSize * 1.0f}), // Dimensions of the entrance 
+        sf::Vector2f({tileSize * 3.0f + 20.0f, tileSize * 1.0f}), // Dimensions of the entrance 
+        sf::Vector2f({-20.0f, -10.0f}) // Offset of the entrance 
+    ));
+
+    gameObjects.emplace_back(std::move(player));
+}
+
+
+// Home
+void MapLoader::loadHome(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *&trackedPlayer, int tileSize, sf::Vector2f spawnPoint) {
+    // Player // Player is added at the end so the texture is on top
+    auto player = std::make_unique<Player>(spawnPoint.x, spawnPoint.y);
+    trackedPlayer = player.get(); 
+
+    // Loads the 9x10 Home map
+    auto map = std::make_unique<TileMap>("maps/tiles_home.png", "maps/home.csv", 9, 10, tileSize, std::vector<int>{1});
+    GameObject::world = map.get(); 
+    gameObjects.emplace_back(std::move(map));
+
+    gameObjects.emplace_back(std::make_unique<SwitchLocation>(
+        tileSize * 4, tileSize * 9, // Spawn point of the object
+        "objects/home_exit.png",
+        trackedPlayer, 
+        LocationID::Overworld, 
+        sf::Vector2f({tileSize * 253.0f, tileSize * 126.0f}), // Spawn point of the player after interaction
+        sf::Vector2f({tileSize * 1.0f, tileSize * 1.0f}), // Dimensions of the entrance 
         sf::Vector2f({0.0f, 0.0f}) // Offset of the entrance 
     ));
 
     gameObjects.emplace_back(std::move(player));
 }
+
 
 
 

@@ -45,6 +45,10 @@ GameObject::GameObject(float startX, float startY)
         sprite.setPosition({x, y});
     }
 
+void GameObject::setSpriteScale(sf::Vector2f scale) {
+    sprite.setScale(scale);
+}
+
 // ----------------------
 // -------- Game --------
 // ----------------------
@@ -52,14 +56,33 @@ sf::VideoMode desktop = sf::VideoMode::getDesktopMode();
 unsigned int screenWidth = desktop.size.x;
 unsigned int screenHeight = desktop.size.y;
 
-Game::Game() : window(sf::VideoMode({screenWidth, screenHeight}),  "Hunter Simulator") {}
+Game::Game() : window(sf::VideoMode({screenWidth, screenHeight}),  "Hunter Simulator", sf::Style::None, sf::State::Fullscreen), pauseText(font) {}
 
 void Game::init() {
     srand(static_cast<unsigned int>(time(nullptr)));
-    camera.setSize({1280, 720});
 
-    // Start game in the Overworld
-    loadLocation(LocationID::Overworld, sf::Vector2f(tileSize * 250.0f, tileSize * 125.0f));
+    isPaused = false;
+
+    // --- PAUSE MENU SETUP ---
+    if (!font.openFromFile("fonts/pixelFont.ttf")) { 
+        std::cerr << "Failed to load font!\n";
+    }
+    
+    pauseText.setFont(font);
+    pauseText.setString("PAUSED\n\nPress ESC to Resume\nPress Q to Quit");
+    pauseText.setCharacterSize(48);
+    pauseText.setFillColor(sf::Color::White);
+
+    // Centers the text alignment
+    sf::FloatRect textBounds = pauseText.getLocalBounds();
+    pauseText.setOrigin({textBounds.size.x / 2.0f, textBounds.size.y / 2.0f});
+
+    // Dark semi-transparent overlay
+    pauseOverlay.setFillColor(sf::Color(0, 0, 0, 150));
+    // ------------------------
+
+    // Start game at the home
+    loadLocation(LocationID::Home, sf::Vector2f(tileSize * 4.0f, tileSize * 2.0f));
 }
 
 void Game::loadLocation(LocationID dest, sf::Vector2f spawnPoint) {
@@ -72,10 +95,14 @@ void Game::loadLocation(LocationID dest, sf::Vector2f spawnPoint) {
     } else if (dest == LocationID::Cave) {
         MapLoader::loadCave(GameObjects, trackedPlayer, tileSize, spawnPoint);
         camera.setSize({680, 360});
+    } else if (dest == LocationID::Home) {
+        MapLoader::loadHome(GameObjects, trackedPlayer, tileSize, spawnPoint);
+        camera.setSize({680, 360});
     }
 }
 
 void Game::update(float dt) {
+    if (!isPaused) {
     bool switchLevel = false;
     LocationID nextDest;
     sf::Vector2f nextSpawn;
@@ -101,22 +128,48 @@ void Game::update(float dt) {
         float playerX = trackedPlayer->getPosition().x;
         float playerY = trackedPlayer->getPosition().y;
 
+        float viewWidth = camera.getSize().x;
+        float viewHeight = camera.getSize().y;
         float halfWidth = camera.getSize().x / 2.0f;
         float halfHeight = camera.getSize().y / 2.0f;
 
-        // Set boundaries based on current map size
-        // true = overworld values // false = cave values (for now)
-        float mapWidthPixels = (currentLocation == LocationID::Overworld ? 300.0f : 20.0f) * tileSize;
-        float mapHeightPixels = (currentLocation == LocationID::Overworld ? 150.0f : 40.0f) * tileSize;
+        float mapWidthPixels = 0.0f;
+        float mapHeightPixels = 0.0f;
+
+        if (currentLocation == LocationID::Overworld) {
+            mapWidthPixels = 300.0f * tileSize;
+            mapHeightPixels = 150.0f * tileSize;
+        } else if (currentLocation == LocationID::Cave) {
+            mapWidthPixels = 20.0f * tileSize;
+            mapHeightPixels = 40.0f * tileSize;
+        } else if (currentLocation == LocationID::Home) {
+            mapWidthPixels = 9.0f * tileSize;   // Home is 9 tiles wide
+            mapHeightPixels = 10.0f * tileSize; // Home is 10 tiles high
+        }
 
         // std::max ensures the camera center doesn't break if the map is smaller than the window
         float maxX = std::max(halfWidth, mapWidthPixels - halfWidth);
         float maxY = std::max(halfHeight, mapHeightPixels - halfHeight);
 
-        float cameraX = std::clamp(playerX, halfWidth, maxX);
-        float cameraY = std::clamp(playerY, halfHeight, maxY);
+        float cameraX = playerX;
+        float cameraY = playerY;
+
+        // Center horizontally if the map is smaller than the screen, otherwise clamp normally
+        if (mapWidthPixels < viewWidth) {
+            cameraX = mapWidthPixels / 2.0f;
+        } else {
+            cameraX = std::clamp(playerX, halfWidth, mapWidthPixels - halfWidth);
+        }
+
+        // Center vertically if the map is smaller than the screen, otherwise clamp normally
+        if (mapHeightPixels < viewHeight) {
+            cameraY = mapHeightPixels / 2.0f;
+        } else {
+            cameraY = std::clamp(playerY, halfHeight, mapHeightPixels - halfHeight);
+        }
 
         camera.setCenter({cameraX, cameraY});
+        }
     }
 }
 
@@ -134,6 +187,18 @@ void Game::run() {
         while (auto event = window.pollEvent()) {
             if (event->is<sf::Event::Closed>())
                 window.close();
+            
+            if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
+                // Toggle pause on Escape
+                if (keyPressed->scancode == sf::Keyboard::Scancode::Escape) {
+                    isPaused = !isPaused;
+                }
+                
+                // Quit if 'Q' is pressed while paused
+                if (isPaused && keyPressed->scancode == sf::Keyboard::Scancode::Q) {
+                    window.close();
+                }
+            }
         }
         update(dt.asSeconds());
         render();
@@ -141,12 +206,30 @@ void Game::run() {
 }
 
 void Game::render() {
-    window.clear(sf::Color({80, 244, 51}));
+    if (currentLocation == LocationID::Overworld) {
+        window.clear(sf::Color({80, 244, 51})); // Grass Green
+    } else {
+        window.clear(sf::Color::Black); // Black void for indoors
+    }
 
     window.setView(camera);
 
     for(const auto &object : GameObjects) {
         object->draw(window);
+    }
+
+    // Draw the pause menu
+    if (isPaused) {
+        // Set the overlay and text to where the camera is looking
+        sf::Vector2f cameraCenter = camera.getCenter();
+        sf::Vector2f cameraSize = camera.getSize();
+
+        pauseOverlay.setSize(cameraSize);
+        pauseOverlay.setPosition(cameraCenter - (cameraSize / 2.0f));
+        pauseText.setPosition(cameraCenter);
+
+        window.draw(pauseOverlay);
+        window.draw(pauseText);
     }
 
     window.display();

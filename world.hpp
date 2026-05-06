@@ -37,6 +37,7 @@ class MapLoader {
 public:
     static void loadOverworld(std::vector<std::unique_ptr<GameObject>>& gameObjects, Player*& trackedPlayer, int tileSize, sf::Vector2f spawnPoint);
     static void loadCave(std::vector<std::unique_ptr<GameObject>>& gameObjects, Player*& trackedPlayer, int tileSize, sf::Vector2f spawnPoint);
+    static void loadHome(std::vector<std::unique_ptr<GameObject>>& gameObjects, Player*& trackedPlayer, int tileSize, sf::Vector2f spawnPoint);
 };
 
 
