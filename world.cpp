@@ -3,7 +3,7 @@
 // ----------------------
 // --- SwitchLocation ---
 // ----------------------
-SwitchLocation::SwitchLocation(float startX, float startY, const std::string& texturePath, Player* player, 
+SwitchLocation::SwitchLocation(float startX, float startY, const std::string& texturePath, Player *player, 
     LocationID destination, sf::Vector2f spawn, sf::Vector2f entrance_dimensions, sf::Vector2f hitboxOffset) 
     : GameObject(startX, startY), playerTarget(player), playerEntered(false), destinationLevel(destination), spawnPoint(spawn) {
     
@@ -60,10 +60,7 @@ sf::Vector2f SwitchLocation::getSpawnPoint() const {
 // ----------------------
 
 // Overworld
-void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *&trackedPlayer, int tileSize, sf::Vector2f spawnPoint) {
-    // Player // Player is added at the end so the texture is on top
-    auto player = std::make_unique<Player>(tileSize * 250, tileSize * 125);
-    trackedPlayer = player.get(); // Updates the Game's trackedPlayer pointer
+void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint) {
 
     // Map
     auto map = std::make_unique<TileMap>("maps/tiles_overworld.png", "maps/overworld.csv", 300, 150, tileSize, std::vector<int>{3});
@@ -74,7 +71,7 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
     gameObjects.emplace_back(std::make_unique<SwitchLocation>(
         tileSize * 253, tileSize * 125, // Spawn point of the object
         "objects/cave.png", 
-        trackedPlayer, 
+        player, 
         LocationID::Cave, 
         sf::Vector2f({tileSize * 8.0f, tileSize * 38.0f}), // Spawn point of the player after interaction
         sf::Vector2f({220.0f, 130.0f}), // Dimensions of the entrance 
@@ -84,7 +81,7 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
     auto home = std::make_unique<SwitchLocation>(        
         tileSize * 258, tileSize * 125, // Spawn point of the object
         "objects/home.png", 
-        trackedPlayer, 
+        player, 
         LocationID::Home, 
         sf::Vector2f({tileSize * 4.0f, tileSize * 8.0f}), // Spawn point of the player after interaction
         sf::Vector2f({70.0f, 80.0f}), // Dimensions of the entrance 
@@ -94,19 +91,19 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
     gameObjects.emplace_back(std::move(home));
 
     // Entities
-    gameObjects.emplace_back(std::make_unique<Hare>(tileSize * 255, tileSize * 125, trackedPlayer));
+    // sf::FloatRect({left_x, top_y}, {width, height})
+    int numberOfEntities1 = rand() % 21 + 10; // 10 - 30;
+    sf::FloatRect hareSpawnpoint1({tileSize * 200.0f, tileSize * 20.0f}, {tileSize * 100.0f, tileSize * 75.0f});
+    spawnHare(gameObjects, player, hareSpawnpoint1, numberOfEntities1);
 
-
-    // Adds player
-    gameObjects.emplace_back(std::move(player));
+    int numberOfEntities2 = rand() % 11 + 20; // 20 - 30;
+    sf::FloatRect hareSpawnpoint2({tileSize * 15.0f, tileSize * 20.0f}, {tileSize * 150.0f, tileSize * 50.0f});
+    spawnHare(gameObjects, player, hareSpawnpoint2, numberOfEntities2);
 }
 
 
 // Cave
-void MapLoader::loadCave(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *&trackedPlayer, int tileSize, sf::Vector2f spawnPoint) {
-    // Player // Player is added at the end so the texture is on top
-    auto player = std::make_unique<Player>(spawnPoint.x, spawnPoint.y);
-    trackedPlayer = player.get(); 
+void MapLoader::loadCave(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint) {
 
     // Loads the 20x40 Cave map
     auto map = std::make_unique<TileMap>("maps/tiles_cave.png", "maps/cave.csv", 20, 40, tileSize, std::vector<int>{1});
@@ -117,22 +114,17 @@ void MapLoader::loadCave(std::vector<std::unique_ptr<GameObject>> &gameObjects, 
     gameObjects.emplace_back(std::make_unique<SwitchLocation>(
         tileSize * 8, tileSize * 39, // Spawn point of the object
         "objects/cave_exit.png",
-        trackedPlayer, 
+        player, 
         LocationID::Overworld, 
         sf::Vector2f({tileSize * 253.0f, tileSize * 126.0f}), // Spawn point of the player after interaction
         sf::Vector2f({tileSize * 3.0f + 20.0f, tileSize * 1.0f}), // Dimensions of the entrance 
         sf::Vector2f({-20.0f, -10.0f}) // Offset of the entrance 
     ));
-
-    gameObjects.emplace_back(std::move(player));
 }
 
 
 // Home
-void MapLoader::loadHome(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *&trackedPlayer, int tileSize, sf::Vector2f spawnPoint) {
-    // Player // Player is added at the end so the texture is on top
-    auto player = std::make_unique<Player>(spawnPoint.x, spawnPoint.y);
-    trackedPlayer = player.get(); 
+void MapLoader::loadHome(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint) {
 
     // Loads the 9x10 Home map
     auto map = std::make_unique<TileMap>("maps/tiles_home.png", "maps/home.csv", 9, 10, tileSize, std::vector<int>{1});
@@ -142,14 +134,44 @@ void MapLoader::loadHome(std::vector<std::unique_ptr<GameObject>> &gameObjects, 
     gameObjects.emplace_back(std::make_unique<SwitchLocation>(
         tileSize * 4, tileSize * 9, // Spawn point of the object
         "objects/home_exit.png",
-        trackedPlayer, 
+        player, 
         LocationID::Overworld, 
         sf::Vector2f({tileSize * 253.0f, tileSize * 126.0f}), // Spawn point of the player after interaction
         sf::Vector2f({tileSize * 1.0f, tileSize * 1.0f}), // Dimensions of the entrance 
         sf::Vector2f({0.0f, 0.0f}) // Offset of the entrance 
     ));
+}
 
-    gameObjects.emplace_back(std::move(player));
+
+// Spawn things
+void MapLoader::spawnHare(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, sf::FloatRect spawnArea, int entityCount) {
+    for (int i = 0; i < entityCount; ++i) {
+        float spawnX = 0.0f;
+        float spawnY = 0.0f;
+        bool validSpotFound = false;
+        int maxAttempts = 30; // Prevents infinite loops if the area is completely solid
+
+        for (int attempt = 0; attempt < maxAttempts; ++attempt) {
+            // Generates random numbers within the rectangle
+            float randomX = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+            float randomY = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+
+            spawnX = spawnArea.position.x + (randomX * spawnArea.size.x);
+            spawnY = spawnArea.position.y + (randomY * spawnArea.size.y);
+
+            // Ensures GameObject::world exists and the tile isn't solid
+            if (GameObject::world != nullptr && !GameObject::world->isSolid(spawnX, spawnY)) {
+                validSpotFound = true;
+                break; // If a good spot is found, exits the attempt loop
+            }
+        }
+
+        if (validSpotFound) {
+            gameObjects.emplace_back(std::make_unique<Hare>(spawnX, spawnY, player));
+        } else {
+            std::cerr << "Couldn't find a valid spawn point for Hare in the designated area\n";
+        }
+    }
 }
 
 
@@ -188,7 +210,7 @@ TileMap::TileMap(const std::string &textureFile, const std::string &csvFile, int
 
     int expectedSize = mapWidth * mapHeight;
     if (mapData.size() != expectedSize) {
-        std::cerr << "WARNING: Expected " << expectedSize << " tiles, but loaded " << mapData.size() << "!\n";
+        std::cerr << "Expected " << expectedSize << " tiles, but loaded " << mapData.size() << "!\n";
     }
 
     // Populates the Vertex Array

@@ -6,8 +6,10 @@
 #include <vector>
 #include <memory>
 #include <cmath>
-#include <cstdlib> // For randomness
-#include <algorithm> // Required for std::clamp
+#include <cstdlib>
+#include <algorithm>
+#include <sstream>
+#include <iomanip>
 
 // Used by MapLoader
 enum class LocationID {
@@ -40,11 +42,11 @@ protected:
     float y;
     float width;
     float height;
-    bool active;
     bool solid;
     sf::Texture texture;
     sf::Sprite sprite;
 public:
+    bool active;
     GameObject(float startX, float startY);
 
     void setSpriteScale(sf::Vector2f scale); // for resizing objects 
@@ -68,18 +70,23 @@ private:
     sf::RectangleShape pauseOverlay;
     // ----------------------------------
 
+    // Cash display
+    sf::Text cashText;
+
     sf::RenderWindow window;
     std::vector<std::unique_ptr<GameObject>> GameObjects;
 
     sf::View camera;
-    Player* trackedPlayer; // Used by objects to know player's position
+    std::unique_ptr<Player> player;
     LocationID currentLocation; // Tracks which map is active
 
     void init();
     void loadLocation(LocationID dest, sf::Vector2f spawnPoint);
 public:
     Game();
+    ~Game();
     void run();
     void render();
     void update(float dt); // camera here
 };
+

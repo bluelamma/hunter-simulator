@@ -20,6 +20,10 @@ void Projectile::update(float dt, sf::RenderWindow &window) {
     shape.move(velocity * dt);
 }
 
+sf::FloatRect Projectile::getBounds() const {
+    return shape.getGlobalBounds();
+}
+
 
 
 // ----------------------
@@ -33,11 +37,47 @@ Hare::Hare(float startX, float startY, Player *player)
         sprite.setTexture(texture, true); 
     }
 
-    sprite.setScale(sf::Vector2f({0.75f, 0.75f}));
+    sf::Vector2f harePos = sprite.getPosition();
+    if (rand() % 20 < 1) {
+        hp = rand() % 50 + 40;
+    } else {
+        hp = rand() % 30 + 30;
+    }
+    maxHp = hp;
+    difference = maxHp / 45.0f;
+    speed *= difference;
+
+    hitbox.setSize(sf::Vector2f(64.0f * 0.5f * difference, 64.0f * 0.5f * difference));
+    hitbox.setPosition(sf::Vector2f(harePos.x + 0.0f, harePos.y + 0.0f));
+    hitbox.setFillColor(sf::Color(255, 0, 0, 0)); // set last one to 100 for debugging
+
+    sprite.setScale(sf::Vector2f({0.75f * difference, 0.75f * difference}));
 }
 
 void Hare::draw(sf::RenderWindow &window) {
     window.draw(sprite);
+    window.draw(hitbox);
+}
+
+void Hare::takeDamage(int amount) {
+    hp -= amount;
+    panicTimer = 5.0f;
+    
+    if (hp <= 0) {
+        active = false; 
+    }
+}
+
+int Hare::getHp() const {
+    return hp;
+}
+
+sf::FloatRect Hare::getBounds() const {
+    return hitbox.getGlobalBounds(); 
+}
+
+float Hare::getDiff() const {
+    return difference; 
 }
 
 void Hare::update(float dt, sf::RenderWindow &window) {
@@ -53,10 +93,13 @@ void Hare::update(float dt, sf::RenderWindow &window) {
     float dy = harePos.y - playerPos.y;
     float distance = std::sqrt(dx * dx + dy * dy);
 
-    float fleeRadius = playerTarget->isAttacking() ? 300.0f : 125.0f;
+    float fleeRadius = playerTarget->isAttacking() ? 600.0f : 250.0f;
 
+    if(panicTimer > 0) {
+        panicTimer -= dt;
+    }
 
-    if (distance <= fleeRadius) {  
+    if (distance <= fleeRadius || panicTimer >= 0.0f) {  
         // Vector pointing away from the player
         sf::Vector2f dir(dx, dy); 
 
@@ -66,14 +109,19 @@ void Hare::update(float dt, sf::RenderWindow &window) {
             dir.y /= length;
         }
 
-        // If attacked runs 6 times faster than normally
-        velocity = dir * (speed * 6.0f);
+        // If attacked runs 6 times faster than normally unless wounded
+        if (hp <= maxHp * 0.3) {
+            velocity = dir * (speed * 0.5f);
+        } else {
+            velocity = dir * (speed * 6.0f);
+        }
 
         if (velocity.x < 0) {
             facingRow = 0; // Left
         } else if (velocity.x > 0) {
             facingRow = 1; // Right
         }
+
 
         endFrame = 1;
         moveTimer = 0.0f;
@@ -140,10 +188,13 @@ void Hare::update(float dt, sf::RenderWindow &window) {
                 // Try going up if doesn't work try going horizontally 
                 if (!GameObject::world->isSolid(currentPos.x + offsetX, feetY)) {
                     sprite.setPosition({currentPos.x, nextPos.y});
+                    moveTimer = moveInterval;
                 } else if (!GameObject::world->isSolid(feetX, currentPos.y + offsetY)) {
                     sprite.setPosition({nextPos.x, currentPos.y});
+                    moveTimer = moveInterval;
                 } else {
                     endFrame = 0;
+                    moveTimer = moveInterval;
                 }
             }
         }
@@ -151,6 +202,7 @@ void Hare::update(float dt, sf::RenderWindow &window) {
         endFrame = 0;
     }
 
+    hitbox.setPosition(sf::Vector2f(harePos.x + 0.0f, harePos.y + 0.0f));
     animation.update(facingRow, startFrame, endFrame, dt, sprite);
 }
 
@@ -165,8 +217,23 @@ Player::Player(float startX, float startY)
         std::cerr << "Couldn't load player texture \n";
     } else {
         sprite.setTexture(texture, true); 
+        sprite.setTextureRect(sf::IntRect({0, 0}, {31, 41})); 
     }
 
+    speed = 200.0f;
+
+    movement_cooldown = 0.0f;
+    shot_cooldown = 0.0f;
+    isMoving = false;
+    isDead = false;
+
+    hp = 100;
+    maxHp = 100;
+    damage = 30;
+    level = 0;
+    experience = 0;
+    experienceThreshold = 200;
+    cash = 0.0f;
     sprite.setScale(sf::Vector2f({2.0f, 2.0f}));
 }
 
@@ -178,141 +245,215 @@ void Player::draw(sf::RenderWindow &window) {
     }
 }
 
+
+void Player::update(float dt, sf::RenderWindow &window) {
+    if(experience >= experienceThreshold) {
+        levelUp();
+    }
+
+    // Movement and attacking
+    float speedDt = speed * dt;
+    int startFrame = 0;
+    int endFrame = 0;   
+
+    if (!isDead) {
+        if (movement_cooldown <= 0) {
+            isMoving = false;
+
+            sf::Vector2f nextPos = sprite.getPosition();
+
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::W)) {
+                nextPos.y -= speedDt; 
+                isMoving = true;
+            } else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::S)) {
+                nextPos.y += speedDt;
+                isMoving = true;
+            }
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::A)) {
+                nextPos.x -= speedDt;
+                isMoving = true;
+                facingRow = 1;
+            } else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::D)) {
+                nextPos.x += speedDt;
+                isMoving = true;
+                facingRow = 0;
+            }
+
+            // Collision detection
+            if (isMoving) {
+                startFrame = 1;
+                endFrame = 2;
+
+                if (GameObject::world != nullptr) {
+
+                    sf::FloatRect bounds = sprite.getGlobalBounds();
+                    
+                    // To keep the collision point at the bottom-center of the player
+                    float offsetX = bounds.size.x / 2.0f; 
+                    float offsetY = bounds.size.y; 
+
+                    // coordinates of the feet for the next position
+                    float feetX = nextPos.x + offsetX;
+                    float feetY = nextPos.y + offsetY;
+                    
+                    sf::Vector2f currentPos = sprite.getPosition();
+
+                    // Movement without obstructions
+                    if (!GameObject::world->isSolid(feetX, feetY)) {
+                        sprite.setPosition(nextPos);
+                    } else {
+                        // Try moving to the side
+                        if (!GameObject::world->isSolid(nextPos.x + offsetX, currentPos.y + offsetY)) {
+                            sprite.setPosition({nextPos.x, currentPos.y});
+                        } 
+                        // Try moving up or down
+                        else if (!GameObject::world->isSolid(currentPos.x + offsetX, nextPos.y + offsetY)) {
+                            sprite.setPosition({currentPos.x, nextPos.y});
+                        } 
+                        // Movement completely blocked
+                        else {
+                            startFrame = 0;
+                            endFrame = 0;
+                        }
+                    }
+                }
+            }
+
+            // Attack
+            if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)) {
+                sprite.move(sf::Vector2f(0.0f, 0.0f));
+                startFrame = 3;
+                endFrame = 3;
+                movement_cooldown = 0.15f;
+                isMoving = false;
+
+                sf::Vector2f current_position = sprite.getPosition();
+
+                // Spawn of the bullet relative to the player's sprite 
+                // Adjustments necessary in case of changing player's scale
+                float spawnX = current_position.x;
+                float spawnY = current_position.y + 20.0f;
+
+                sf::Vector2i mousePosInt = sf::Mouse::getPosition(window);
+                // Makes it work with movable camera
+                sf::Vector2f mousePos = window.mapPixelToCoords(mousePosInt);
+
+                // Turns the player depending on if he's clicking on the left or right side relative to the sprite
+                if (mousePos.x < spawnX + 30.0f) {
+                    facingRow = 1;
+                } else {
+                    facingRow = 0;
+                }
+
+                // adds offset so it shoots from the gun instead of the center
+                if (facingRow == 0) {
+                    spawnX += 60.0f;
+                }
+
+                // direction vector // calculates the direcion the bullet is supposed to go
+                sf::Vector2f direction = mousePos - sf::Vector2f(spawnX, spawnY);
+
+                // makes direction x, y = 1 at max so I can multiply it by speed
+                float length = std::sqrt(direction.x * direction.x + direction.y * direction.y);
+                if(length != 0.0f) {
+                    direction.x /= length;
+                    direction.y /= length;
+                }
+
+                if (shot_cooldown <= 0) {
+                    projectiles.push_back(std::make_unique<Projectile>(spawnX, spawnY, 2.0f, direction, 600.0f));
+                    shot_cooldown = 0.75; 
+                }
+            }
+
+            if (shot_cooldown > 0) {
+                shot_cooldown -= dt;
+            }
+
+            animation.update(facingRow, startFrame, endFrame, dt, sprite);
+        } else {
+            movement_cooldown -= dt;
+            startFrame = 3;
+            endFrame = 3;
+        }
+    } else {
+        sprite.setTextureRect(sf::IntRect({0, 82}, {60, 18}));
+    }
+
+    // Makes the projectiles actually appear
+    for (const auto &projectile : projectiles) {
+        projectile->update(dt, window);
+    }
+
+    // Deletes the projectiles that hit something
+    projectiles.erase(
+        std::remove_if(projectiles.begin(), projectiles.end(),
+            [](const std::unique_ptr<Projectile>& p) { return !p->active; }),
+        projectiles.end()
+    );
+}
+
+void Player::levelUp() {
+    experience -= experienceThreshold;
+    level += 1;
+    experienceThreshold = 200 + level * 100;
+
+    if (speed < 500.0f) {
+        speed += 25.0f;
+    }
+
+    hp = 100 + 10 * level;
+    maxHp = 100 + 10 * level;
+}
+
+void Player::setPosition(sf::Vector2f Pos) {
+    sprite.setPosition(Pos);
+}
+
+void Player::addExperience(int amount) {
+    experience += amount;
+}
+
 bool Player::isAttacking() const {
     return movement_cooldown > 0.0f;
+}
+
+bool Player::checkIfDead() const {
+    return isDead;
 }
 
 sf::Vector2f Player::getPosition() const {
     return sprite.getPosition();
 }
 
-void Player::update(float dt, sf::RenderWindow &window) {
-    float speed = 1000.0f * dt;
-    int startFrame = 0;
-    int endFrame = 0;
+int Player::getDamage() const {
+    return damage;
+}
 
-    if (movement_cooldown <= 0) {
-        isMoving = false;
+int Player::getHp() const {
+    return hp;
+}
 
-        sf::Vector2f nextPos = sprite.getPosition();
+int Player::getMaxHp() const {
+    return maxHp;
+}
 
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::W)) {
-            nextPos.y -= speed; 
-            isMoving = true;
-        } else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::S)) {
-            nextPos.y += speed;
-            isMoving = true;
-        }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::A)) {
-            nextPos.x -= speed;
-            isMoving = true;
-            facingRow = 1;
-        } else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::D)) {
-            nextPos.x += speed;
-            isMoving = true;
-            facingRow = 0;
-        }
+int Player::getExperienceThreshold() const {
+    return experienceThreshold;
+}
 
-        // Collision detection
-        if (isMoving) {
-            startFrame = 1;
-            endFrame = 2;
+int Player::getExperience() const {
+    return experience;
+}
 
-            if (GameObject::world != nullptr) {
+void Player::addCash(float amount) {
+    cash += amount;
+}
 
-                sf::FloatRect bounds = sprite.getGlobalBounds();
-                
-                // To keep the collision point at the bottom-center of the player
-                float offsetX = bounds.size.x / 2.0f; 
-                float offsetY = bounds.size.y; 
+float Player::getCash() const {
+    return cash;
+}
 
-                // coordinates of the feet for the next position
-                float feetX = nextPos.x + offsetX;
-                float feetY = nextPos.y + offsetY;
-                
-                sf::Vector2f currentPos = sprite.getPosition();
-
-                // Movement without obstructions
-                if (!GameObject::world->isSolid(feetX, feetY)) {
-                    sprite.setPosition(nextPos);
-                } else {
-                    // Try moving to the side
-                    if (!GameObject::world->isSolid(nextPos.x + offsetX, currentPos.y + offsetY)) {
-                        sprite.setPosition({nextPos.x, currentPos.y});
-                    } 
-                    // Try moving up or down
-                    else if (!GameObject::world->isSolid(currentPos.x + offsetX, nextPos.y + offsetY)) {
-                        sprite.setPosition({currentPos.x, nextPos.y});
-                    } 
-                    // Movement completely blocked
-                    else {
-                        startFrame = 0;
-                        endFrame = 0;
-                    }
-                }
-            }
-        }
-
-        // Attack
-        if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)) {
-            sprite.move(sf::Vector2f(0.0f, 0.0f));
-            startFrame = 3;
-            endFrame = 3;
-            movement_cooldown = 0.15f;
-            isMoving = false;
-
-            sf::Vector2f current_position = sprite.getPosition();
-
-            // Spawn of the bullet relative to the player's sprite 
-            // Adjustments necessary in case of changing player's scale
-            float spawnX = current_position.x;
-            float spawnY = current_position.y + 20.0f;
-
-            sf::Vector2i mousePosInt = sf::Mouse::getPosition(window);
-            // Makes it work with movable camera
-            sf::Vector2f mousePos = window.mapPixelToCoords(mousePosInt);
-
-            // Turns the player depending on if he's clicking on the left or right side relative to the sprite
-            if (mousePos.x < spawnX + 30.0f) {
-                facingRow = 1;
-            } else {
-                facingRow = 0;
-            }
-
-            // adds offset so it shoots from the gun instead of the center
-            if (facingRow == 0) {
-                spawnX += 60.0f;
-            }
-
-            // direction vector // calculates the direcion the bullet is supposed to go
-            sf::Vector2f direction = mousePos - sf::Vector2f(spawnX, spawnY);
-
-            // makes direction x, y = 1 at max so I can multiply it by speed
-            float length = std::sqrt(direction.x * direction.x + direction.y * direction.y);
-            if(length != 0.0f) {
-                direction.x /= length;
-                direction.y /= length;
-            }
-
-            if (shot_cooldown <= 0) {
-                projectiles.push_back(std::make_unique<Projectile>(spawnX, spawnY, 2.0f, direction, 600.0f));
-                shot_cooldown = 0.75; 
-            }
-        }
-    } else {
-        movement_cooldown -= dt;
-        startFrame = 3;
-        endFrame = 3;
-    }
-
-    if (shot_cooldown > 0) {
-        shot_cooldown -= dt;
-    }
-
-    animation.update(facingRow, startFrame, endFrame, dt, sprite);
-
-    // Makes the projectiles actually appear
-    for (const auto &projectile : projectiles) {
-        projectile->update(dt, window);
-    }
+std::vector<std::unique_ptr<Projectile>>& Player::getProjectiles() {
+    return projectiles;
 }

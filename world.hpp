@@ -8,7 +8,7 @@
 #include "entities.hpp"
 
 
-// Objects letting player to switch location like the cave
+// Objects letting player to switch location like the cave or home
 class SwitchLocation : public GameObject {
 private:
     Player* playerTarget;
@@ -19,7 +19,6 @@ private:
     sf::Vector2f hitboxOffset;
 
 public:
-    // Takes the texture path, destination, spawn coordinates
     SwitchLocation(float startX, float startY, const std::string &texturePath, Player *player, 
         LocationID destination, sf::Vector2f spawn, sf::Vector2f entrance_dimensions, sf::Vector2f hitboxOffset);
     
@@ -35,9 +34,11 @@ public:
 // Makes the map appear in the game // used by Game::loadLocation
 class MapLoader {
 public:
-    static void loadOverworld(std::vector<std::unique_ptr<GameObject>>& gameObjects, Player*& trackedPlayer, int tileSize, sf::Vector2f spawnPoint);
-    static void loadCave(std::vector<std::unique_ptr<GameObject>>& gameObjects, Player*& trackedPlayer, int tileSize, sf::Vector2f spawnPoint);
-    static void loadHome(std::vector<std::unique_ptr<GameObject>>& gameObjects, Player*& trackedPlayer, int tileSize, sf::Vector2f spawnPoint);
+    static void loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint);
+    static void loadCave(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint);
+    static void loadHome(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint);
+
+    static void spawnHare(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, sf::FloatRect spawnArea, int entityCount);
 };
 
 
