@@ -11,7 +11,7 @@
 #include <sstream>
 #include <iomanip>
 
-// Used by MapLoader
+// Used by loadLocation and mapLoader
 enum class LocationID {
     Overworld,
     Cave,

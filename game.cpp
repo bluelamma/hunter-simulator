@@ -1,5 +1,6 @@
 #include "entities.hpp"
 #include "world.hpp"
+#include "player.hpp"
 
 TileMap* GameObject::world = nullptr;
 
@@ -29,7 +30,7 @@ void Animation::update(int row, int startFrame, int endFrame, float dt, sf::Spri
     int left = frameWidth * currentFrame;
     int top = frameHeight * row;
 
-    // Sprite was moving one pixel to the right for whatever reason, that corrects it
+    // Player's sprite was moving one pixel to the right for whatever reason, that corrects it
     if(startFrame == 3 && row == 1) {
         left += 1;
     }
@@ -205,9 +206,9 @@ void Game::update(float dt) {
                             
                             proj->active = false; // The bullet is destroyed on impact
                             
-                            hare->takeDamage(player->getDamage()); 
+                            hare->takeDamage(player->getDamage()); // will deactivate the hare
                             
-                            if (!hare->active) { 
+                            if (hare->checkIfDead() && hare->getDeathTimer() == 0) { 
                                 player->addExperience(50 * hare->getDiff()); 
                                 player->addCash(1.0f * hare->getDiff());
                             }

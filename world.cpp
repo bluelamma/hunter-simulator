@@ -17,7 +17,7 @@ SwitchLocation::SwitchLocation(float startX, float startY, const std::string& te
     // Hitbox
     entranceHitbox.setSize(entrance_dimensions);
     entranceHitbox.setPosition(sf::Vector2f(startX + hitboxOffset.x, startY + hitboxOffset.y));
-    entranceHitbox.setFillColor(sf::Color(255, 0, 0, 100)); 
+    entranceHitbox.setFillColor(sf::Color(255, 0, 0, 0)); // set last one to 100 for debugging
 }
 
 void SwitchLocation::draw(sf::RenderWindow &window) {
@@ -52,6 +52,85 @@ LocationID SwitchLocation::getDestination() const {
 
 sf::Vector2f SwitchLocation::getSpawnPoint() const {
     return spawnPoint;
+}
+
+// ----------------------
+// --- UpgradeStation ---
+// ----------------------
+UpgradeStation::UpgradeStation(float startX, float startY, float width, float height, Player *player)
+    : GameObject(startX, startY), playerTarget(player), isPlayerNear(false), upgradeCooldown(0.0f), 
+      costDamage(25.0f), costReload(25.0f), costVelocity(10.0f), promptText(font) {
+    
+    hitbox.setSize(sf::Vector2f({width, height}));
+    hitbox.setPosition(sf::Vector2f({startX, startY}));
+    hitbox.setFillColor(sf::Color(0, 0, 255, 0)); // set last one to 100 for debugging
+    
+    if (!font.openFromFile("fonts/pixelFont.ttf")) {
+        std::cerr << "Failed to load font for UpgradeStation!\n";
+    }
+    
+    promptText.setFont(font);
+    promptText.setCharacterSize(14);
+    promptText.setFillColor(sf::Color::White);
+    promptText.setOutlineColor(sf::Color::Black);
+    promptText.setOutlineThickness(1.0f);
+}
+
+void UpgradeStation::update(float dt, sf::RenderWindow &window) {
+    if (upgradeCooldown > 0.0f) {
+        upgradeCooldown -= dt;
+    }
+
+    sf::Vector2f playerPos = playerTarget->getPosition();
+    float playerCenterX = playerPos.x + 31.0f;
+    float playerCenterY = playerPos.y + 32.0f;
+
+    isPlayerNear = hitbox.getGlobalBounds().contains({playerCenterX, playerCenterY});
+
+    if (isPlayerNear) {
+        std::stringstream ss;
+        ss << "'1' +damage ($" << std::fixed << std::setprecision(2) << costDamage << ")\n"
+           << "'2' -reloadSpeed ($" << costReload << ")\n"
+           << "'3' +bulletSpeed ($" << costVelocity << ")";
+        promptText.setString(ss.str());
+        
+        promptText.setPosition(sf::Vector2f({hitbox.getPosition().x, hitbox.getPosition().y - 60.0f}));
+
+        if (upgradeCooldown <= 0.0f) {
+            // Damage
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Num1)) {
+                if (playerTarget->spendCash(costDamage)) {
+                    playerTarget->upgradeDamage(15); 
+                    costDamage *= 1.5f; 
+                    upgradeCooldown = 0.5f;
+                }
+            } 
+            // ReloadSpeed
+            else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Num2)) {
+                if (playerTarget->spendCash(costReload)) {
+                    playerTarget->upgradeReloadSpeed(0.05f); // 0.05 seconds faster
+                    costReload += 10.0f;
+                    upgradeCooldown = 0.5f;
+                }
+            } 
+            // BulletVelocity
+            else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Num3)) {
+                if (playerTarget->spendCash(costVelocity)) {
+                    playerTarget->upgradeBulletVelocity(100.0f); // 100 speed units faster
+                    costVelocity *= 1.5f;
+                    upgradeCooldown = 0.5f;
+                }
+            }
+        }
+    }
+}
+
+void UpgradeStation::draw(sf::RenderWindow &window) {
+    window.draw(hitbox);
+    
+    if (isPlayerNear) {
+        window.draw(promptText);
+    }
 }
 
 
@@ -127,9 +206,15 @@ void MapLoader::loadCave(std::vector<std::unique_ptr<GameObject>> &gameObjects, 
 void MapLoader::loadHome(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint) {
 
     // Loads the 9x10 Home map
-    auto map = std::make_unique<TileMap>("maps/tiles_home.png", "maps/home.csv", 9, 10, tileSize, std::vector<int>{1});
+    auto map = std::make_unique<TileMap>("maps/tiles_home.png", "maps/home.csv", 9, 10, tileSize, std::vector<int>{1, 2, 3, 4});
     GameObject::world = map.get(); 
     gameObjects.emplace_back(std::move(map));
+
+    gameObjects.emplace_back(std::make_unique<UpgradeStation>(
+        tileSize * 3.0f, tileSize * 1.0f,  // Start X, Y
+        tileSize * 3.0f, tileSize * 1.5f,  // Width, Height
+        player
+    ));
 
     gameObjects.emplace_back(std::make_unique<SwitchLocation>(
         tileSize * 4, tileSize * 9, // Spawn point of the object

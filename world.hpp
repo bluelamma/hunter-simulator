@@ -6,6 +6,7 @@
 
 #include "game.hpp"
 #include "entities.hpp"
+#include "player.hpp"
 
 
 // Objects letting player to switch location like the cave or home
@@ -28,6 +29,27 @@ public:
     bool hasPlayerEntered() const;
     LocationID getDestination() const;
     sf::Vector2f getSpawnPoint() const;
+};
+
+// Present in home location
+class UpgradeStation : public GameObject {
+private:
+    Player* playerTarget;
+    sf::RectangleShape hitbox;
+    bool isPlayerNear;
+    float upgradeCooldown;
+    
+    float costDamage;
+    float costReload;
+    float costVelocity;
+    
+    sf::Font font;
+    sf::Text promptText;
+
+public:
+    UpgradeStation(float startX, float startY, float width, float height, Player *player);
+    void draw(sf::RenderWindow &window) override;
+    void update(float dt, sf::RenderWindow &window) override;
 };
 
 
