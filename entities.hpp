@@ -6,17 +6,20 @@
 class Creature : public GameObject {
 protected: 
     Animation animation;
-    Player *playerTarget;  
+    Player *player;  
     sf::Vector2f velocity; 
     float speed; 
     bool isMoving; 
     int facingRow; 
+    int startFrame;
+    int endFrame;
 
     float difference; 
     int maxHp;
     int hp;
     sf::RectangleShape hitbox;
 
+    bool isAttacking;
     bool isDead;
     float deathTimer;
 
@@ -44,5 +47,28 @@ private:
 public:
     Hare(float startX, float startY, Player *player);
     
+    void update(float dt, sf::RenderWindow &window) override;
+};
+
+class Boar : public Creature {
+private:
+    float moveTimer;       
+    float moveInterval;       
+    float bounceTimer;
+
+    float idleTimer;
+
+    float attackTimer;
+    float attackCooldown;
+    int attackDamage;
+    bool turningLocked;
+
+    float pursuitTimer;
+    float aggroRadius;
+    float aggroCheckTimer;
+    bool aggroed;
+public:
+    Boar(float startX, float startY, Player *player);
+
     void update(float dt, sf::RenderWindow &window) override;
 };

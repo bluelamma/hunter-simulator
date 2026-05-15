@@ -42,6 +42,9 @@ private:
 
     // Economy stuff
     float cash;
+    float nextDamageCost;
+    float nextReloadCost;
+    float nextVelocityCost;
 public:
     Player(float startX, float startY);
     void setPosition(sf::Vector2f Pos);
@@ -53,6 +56,8 @@ public:
     void addCash(float amount); 
     bool spendCash(float amount);
 
+    void takeDamage(int amount);
+
     // Upgrading stuff
     void upgradeDamage(int amount);
     void upgradeReloadSpeed(float amount);
@@ -61,12 +66,16 @@ public:
     // Getters
     bool isAttacking() const;
     float getCash() const;
+    float getNextDamageCost() const;
+    float getNextReloadCost() const;
+    float getNextVelocityCost() const;
     int getDamage() const;
     int getHp() const;
     int getMaxHp() const;
     int getExperienceThreshold() const;
     int getExperience() const;
     bool checkIfDead() const;
+    sf::FloatRect getBounds() const;
     sf::Vector2f getPosition() const; // Necessary for entities and camera to get position of the player
     std::vector<std::unique_ptr<Projectile>> &getProjectiles();
 };

@@ -30,7 +30,7 @@ void Animation::update(int row, int startFrame, int endFrame, float dt, sf::Spri
     int left = frameWidth * currentFrame;
     int top = frameHeight * row;
 
-    // Player's sprite was moving one pixel to the right for whatever reason, that corrects it
+    // Player's sprite was moving one pixel to the right, that corrects it
     if(startFrame == 3 && row == 1) {
         left += 1;
     }
@@ -48,6 +48,10 @@ GameObject::GameObject(float startX, float startY)
 
 void GameObject::setSpriteScale(sf::Vector2f scale) {
     sprite.setScale(scale);
+}
+
+sf::FloatRect GameObject::getGlobalBounds() const {
+    return sprite.getGlobalBounds();
 }
 
 // ----------------------
@@ -70,7 +74,7 @@ void Game::init() {
     // --- HUD ---
     // -- Pausing -- 
     if (!font.openFromFile("fonts/pixelFont.ttf")) { 
-        std::cerr << "Failed to load font!\n";
+        std::cerr << "Failed to load the font\n";
     }
     
     pauseText.setFont(font);
@@ -83,7 +87,7 @@ void Game::init() {
     sf::FloatRect textBounds = pauseText.getLocalBounds();
     pauseText.setOrigin({textBounds.size.x / 2.0f, textBounds.size.y / 2.0f});
 
-    // Dark semi-transparent overlay
+    // Dark overlay
     pauseOverlay.setFillColor(sf::Color(0, 0, 0, 150));
 
     // -- Cash display --
@@ -198,6 +202,7 @@ void Game::update(float dt) {
             for (auto& object : GameObjects) {
                 // Checks if the object is a hare
                 Hare* hare = dynamic_cast<Hare*>(object.get());
+                Boar* boar = dynamic_cast<Boar*>(object.get());
                 
                 if (hare && hare->active) {
                     for (auto& proj : player->getProjectiles()) {
@@ -206,11 +211,28 @@ void Game::update(float dt) {
                             
                             proj->active = false; // The bullet is destroyed on impact
                             
-                            hare->takeDamage(player->getDamage()); // will deactivate the hare
+                            hare->takeDamage(player->getDamage()); // will reduce hp of the hare
                             
                             if (hare->checkIfDead() && hare->getDeathTimer() == 0) { 
                                 player->addExperience(50 * hare->getDiff()); 
-                                player->addCash(1.0f * hare->getDiff());
+                                player->addCash(2.0f * hare->getDiff() * 3.0f );
+                            }
+                        }
+                    }
+                }
+
+                if (boar && boar->active) {
+                    for (auto& proj : player->getProjectiles()) {
+                        
+                        if (proj->active && boar->getBounds().findIntersection(proj->getBounds())) {
+                            
+                            proj->active = false; // The bullet is destroyed on impact
+                            
+                            boar->takeDamage(player->getDamage()); // will reduce hp of the boar
+                            
+                            if (boar->checkIfDead() && boar->getDeathTimer() == 0) { 
+                                player->addExperience(100 * boar->getDiff()); 
+                                player->addCash(5.0f * boar->getDiff() * 5.0f);
                             }
                         }
                     }

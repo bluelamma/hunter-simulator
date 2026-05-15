@@ -18,6 +18,13 @@ void Projectile::draw(sf::RenderWindow &window) {
 
 void Projectile::update(float dt, sf::RenderWindow &window) {
     shape.move(velocity * dt);
+
+    // Collision with objects
+    sf::Vector2f pos = shape.getPosition();
+
+    if (GameObject::world->isSolid(pos.x + radius, pos.y + radius)) {
+        active = false; 
+    }
 }
 
 sf::FloatRect Projectile::getBounds() const {
@@ -29,7 +36,7 @@ sf::FloatRect Projectile::getBounds() const {
 // ------- Player -------
 // ----------------------
 Player::Player(float startX, float startY) 
-: GameObject(startX, startY), animation(31, 41, 0.25f), facingRow(0) {
+: GameObject(startX, startY), animation(31, 41, 0.25f), facingRow(0), nextDamageCost(25.0f), nextReloadCost(25.0f), nextVelocityCost(10.0f) {
     if (!texture.loadFromFile("textures/Player.png")) {
         std::cerr << "Couldn't load player texture \n";
     } else {
@@ -37,7 +44,7 @@ Player::Player(float startX, float startY)
         sprite.setTextureRect(sf::IntRect({0, 0}, {31, 41})); 
     }
 
-    speed = 200.0f;
+    speed = 1200.0f;
 
     movement_cooldown = 0.0f;
     shot_cooldown = 0.0f;
@@ -50,7 +57,7 @@ Player::Player(float startX, float startY)
     level = 0;
     experience = 0;
     experienceThreshold = 200;
-    cash = 0.0f;
+    cash = 2000.0f;
 
     base_shot_cooldown = 0.75f;
     bullet_velocity = 600.0f;
@@ -72,12 +79,17 @@ void Player::update(float dt, sf::RenderWindow &window) {
         levelUp();
     }
 
-    // Movement and attacking
+
+    if(hp <= 0) {
+        isDead = true;
+    }
+
     float speedDt = speed * dt;
-    int startFrame = 0;
-    int endFrame = 0;   
 
     if (!isDead) {
+        int startFrame = 0;
+        int endFrame = 0;   
+
         if (movement_cooldown <= 0) {
             isMoving = false;
 
@@ -198,7 +210,12 @@ void Player::update(float dt, sf::RenderWindow &window) {
             endFrame = 3;
         }
     } else {
-        sprite.setTextureRect(sf::IntRect({0, 82}, {60, 18}));
+        if(facingRow == 0) {
+            sprite.setTextureRect(sf::IntRect({0, 82}, {60, 18}));
+        } else {
+            sprite.setTextureRect(sf::IntRect({60, 82}, {60, 18}));
+        }
+        
     }
 
     // Makes the projectiles actually appear
@@ -220,7 +237,7 @@ void Player::levelUp() {
     experienceThreshold = 200 + level * 100;
 
     if (speed < 500.0f) {
-        speed += 25.0f;
+        speed += 15.0f;
     }
 
     hp = 100 + 10 * level;
@@ -237,16 +254,19 @@ bool Player::spendCash(float amount) {
 
 void Player::upgradeDamage(int amount) {
     damage += amount;
+    nextDamageCost *= 1.5f;
 }
 
 void Player::upgradeReloadSpeed(float amount) {
     if (base_shot_cooldown > 0.25f) {
         base_shot_cooldown -= amount;
+        nextReloadCost *= 1.5f;
     }
 }
 
 void Player::upgradeBulletVelocity(float amount) {
     bullet_velocity += amount;
+    nextVelocityCost += 10.0f;
 }
 
 void Player::setPosition(sf::Vector2f Pos) {
@@ -261,9 +281,18 @@ void Player::addCash(float amount) {
     cash += amount;
 }
 
+void Player::takeDamage(int amount) {
+    hp -= amount;
+}
 
 
 // Getters
+float Player::getNextDamageCost() const { return nextDamageCost; }
+
+float Player::getNextReloadCost() const { return nextReloadCost; }
+
+float Player::getNextVelocityCost() const { return nextVelocityCost; }
+
 bool Player::isAttacking() const { return movement_cooldown > 0.0f; }
 
 bool Player::checkIfDead() const { return isDead; }
@@ -281,5 +310,7 @@ int Player::getExperienceThreshold() const { return experienceThreshold; }
 int Player::getExperience() const { return experience; }
 
 float Player::getCash() const { return cash; }
+
+sf::FloatRect Player::getBounds() const { return sprite.getGlobalBounds(); }
 
 std::vector<std::unique_ptr<Projectile>>& Player::getProjectiles() { return projectiles; }

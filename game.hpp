@@ -51,6 +51,8 @@ public:
 
     void setSpriteScale(sf::Vector2f scale); // for resizing objects 
 
+    sf::FloatRect getGlobalBounds() const;
+
     virtual ~GameObject() = default;
     virtual void draw(sf::RenderWindow &window) = 0;
     virtual void update(float dt, sf::RenderWindow &window) {};
@@ -89,4 +91,3 @@ public:
     void render();
     void update(float dt); // camera here
 };
-

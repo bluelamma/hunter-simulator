@@ -34,20 +34,32 @@ public:
 // Present in home location
 class UpgradeStation : public GameObject {
 private:
-    Player* playerTarget;
+    Player* player;
     sf::RectangleShape hitbox;
     bool isPlayerNear;
     float upgradeCooldown;
-    
-    float costDamage;
-    float costReload;
-    float costVelocity;
     
     sf::Font font;
     sf::Text promptText;
 
 public:
     UpgradeStation(float startX, float startY, float width, float height, Player *player);
+    void draw(sf::RenderWindow &window) override;
+    void update(float dt, sf::RenderWindow &window) override;
+};
+
+class Stall : public GameObject {
+private:
+    Player* player;
+    sf::RectangleShape hitbox;
+    bool isPlayerNear;
+    float buyCooldown;
+    
+    sf::Font font;
+    sf::Text promptText;
+
+public:
+    Stall(float startX, float startY, float width, float height, const std::string &texturePath, Player *player);
     void draw(sf::RenderWindow &window) override;
     void update(float dt, sf::RenderWindow &window) override;
 };
@@ -61,6 +73,7 @@ public:
     static void loadHome(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint);
 
     static void spawnHare(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, sf::FloatRect spawnArea, int entityCount);
+    static void spawnBoar(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, sf::FloatRect spawnArea, int entityCount);
 };
 
 
@@ -68,7 +81,8 @@ public:
 class TileMap : public GameObject {
 private:
     std::vector<int> mapData;
-    std::vector<int> solidTiles;
+    std::vector<int> solidTiles; // Collisions with water
+    std::vector<sf::FloatRect> solidBoxes; // Collisions with objects
     int mapWidth; // in tiles
     int mapHeight; // in tiles
     int tileSize;
@@ -78,6 +92,9 @@ private:
 
 public:
     TileMap(const std::string &textureFile, const std::string &csvFile, int width, int height, int tSize, std::vector<int> solids);
+
+    void addSolidBox(const sf::FloatRect& box);
+
     void draw(sf::RenderWindow &window) override;
     bool isSolid(float pixelX, float pixelY) const; // for Checking if the player can walk on a specitic tile
 };
