@@ -65,11 +65,13 @@ class Game {
 private:
     int tileSize = 64; // Used to make spawn point of things on specified tiles, load maps correctly
 
-    // --- Stuff for pausing the game ---
+    // --- Stuff for pausing the game and restarting ---
     bool isPaused;
     sf::Font font;
     sf::Text pauseText;
+    sf::Text restartText;
     sf::RectangleShape pauseOverlay;
+    sf::RectangleShape restartOverlay;
     // ----------------------------------
 
     // Cash display

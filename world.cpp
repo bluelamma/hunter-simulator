@@ -1,186 +1,5 @@
 #include "world.hpp"
-
-// ----------------------
-// --- SwitchLocation ---
-// ----------------------
-SwitchLocation::SwitchLocation(float startX, float startY, const std::string& texturePath, Player *player, 
-    LocationID destination, sf::Vector2f spawn, sf::Vector2f entrance_dimensions, sf::Vector2f hitboxOffset) 
-    : GameObject(startX, startY), playerTarget(player), playerEntered(false), destinationLevel(destination), spawnPoint(spawn) {
-    
-    // Texture
-    if (!texture.loadFromFile(texturePath)) {
-        std::cerr << "Couldn't load texture: " << texturePath << "\n";
-    } else {
-        sprite.setTexture(texture, true); 
-    }
-
-    // Hitbox
-    entranceHitbox.setSize(entrance_dimensions);
-    entranceHitbox.setPosition(sf::Vector2f(startX + hitboxOffset.x, startY + hitboxOffset.y));
-    entranceHitbox.setFillColor(sf::Color(255, 0, 0, 0)); // set last one to 100 for debugging
-}
-
-void SwitchLocation::draw(sf::RenderWindow &window) {
-    window.draw(sprite);
-    window.draw(entranceHitbox); // uncomment for easier checking if the thing aligns properly
-}
-
-void SwitchLocation::update(float dt, sf::RenderWindow &window) {
-    sf::Vector2f locPos = sprite.getPosition();
-    sf::Vector2f playerPos = playerTarget->getPosition();
-
-    // Player is scaled x2
-    float playerCenterX = playerPos.x + 31.0f;
-    float playerCenterY = playerPos.y + 32.0f;
-
-    // Checks if player is inside the hitbox
-    bool isInside = entranceHitbox.getGlobalBounds().contains({playerCenterX, playerCenterY});
-
-    // If inside the hitbox and interacting
-    if (isInside && sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::E)) {
-        playerEntered = true;
-    }
-}
-
-bool SwitchLocation::hasPlayerEntered() const {
-    return playerEntered;
-}
-
-LocationID SwitchLocation::getDestination() const {
-    return destinationLevel;
-}
-
-sf::Vector2f SwitchLocation::getSpawnPoint() const {
-    return spawnPoint;
-}
-
-// ----------------------
-// --- UpgradeStation ---
-// ----------------------
-UpgradeStation::UpgradeStation(float startX, float startY, float width, float height, Player *player)
-    : GameObject(startX, startY), player(player), isPlayerNear(false), upgradeCooldown(0.0f), promptText(font) {
-    
-    hitbox.setSize(sf::Vector2f({width, height}));
-    hitbox.setPosition(sf::Vector2f({startX, startY}));
-    hitbox.setFillColor(sf::Color(0, 0, 255, 0)); // set last one to 100 for debugging
-    
-    if (!font.openFromFile("fonts/pixelFont.ttf")) {
-        std::cerr << "Failed to load font for UpgradeStation\n";
-    }
-    
-    promptText.setFont(font);
-    promptText.setCharacterSize(14);
-    promptText.setFillColor(sf::Color::White);
-    promptText.setOutlineColor(sf::Color::Black);
-    promptText.setOutlineThickness(1.0f);
-}
-
-void UpgradeStation::update(float dt, sf::RenderWindow &window) {
-    if (upgradeCooldown > 0.0f) {
-        upgradeCooldown -= dt;
-    }
-
-    sf::Vector2f playerPos = player->getPosition();
-    float playerCenterX = playerPos.x + 31.0f;
-    float playerCenterY = playerPos.y + 32.0f;
-
-    isPlayerNear = hitbox.getGlobalBounds().contains({playerCenterX, playerCenterY});
-
-    if (isPlayerNear) {
-        std::stringstream ss;
-        ss << "'1' +damage ($" << std::fixed << std::setprecision(2) << player->getNextDamageCost() << ")\n"
-           << "'2' -reloadSpeed ($" << player->getNextReloadCost() << ")\n"
-           << "'3' +bulletSpeed ($" << player->getNextVelocityCost() << ")";
-        promptText.setString(ss.str());
-        
-        promptText.setPosition(sf::Vector2f({hitbox.getPosition().x, hitbox.getPosition().y - 60.0f}));
-
-        if (upgradeCooldown <= 0.0f) {
-            // Damage
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Num1)) {
-                if (player->spendCash(player->getNextDamageCost())) {
-                    player->upgradeDamage(10.0f); 
-                    upgradeCooldown = 0.5f;
-                }
-            } 
-            // ReloadSpeed
-            else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Num2)) {
-                if (player->spendCash(player->getNextReloadCost())) {
-                    player->upgradeReloadSpeed(0.05f); // 0.05 seconds faster
-                    upgradeCooldown = 0.5f;
-                }
-            } 
-            // BulletVelocity
-            else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Num3)) {
-                if (player->spendCash(player->getNextVelocityCost())) {
-                    player->upgradeBulletVelocity(100.0f); // 100 speed units faster
-                    upgradeCooldown = 0.5f;
-                }
-            }
-        }
-    }
-}
-
-void UpgradeStation::draw(sf::RenderWindow &window) {
-    window.draw(hitbox);
-    
-    if (isPlayerNear) {
-        window.draw(promptText);
-    }
-}
-
-// ----------------------
-// ------- Stall --------
-// ----------------------
-Stall::Stall(float startX, float startY, float width, float height, const std::string &texturePath, Player *player)
-    : GameObject(startX, startY), player(player), isPlayerNear(false), buyCooldown(0.0f), promptText(font) {
-    
-    hitbox.setSize(sf::Vector2f({width, height}));
-    hitbox.setPosition(sf::Vector2f({startX, startY}));
-    hitbox.setFillColor(sf::Color(0, 0, 255, 0)); // set last one to 100 for debugging
-
-    sprite.setPosition(sf::Vector2f({startX, startY}));
-    
-    if (!font.openFromFile("fonts/pixelFont.ttf")) {
-        std::cerr << "Failed to load font for the Stall\n";
-    } 
-    
-    promptText.setFont(font);
-    promptText.setCharacterSize(14);
-    promptText.setFillColor(sf::Color::White);
-    promptText.setOutlineColor(sf::Color::Black);
-    promptText.setOutlineThickness(1.0f);
-
-    // Texture
-    if (!texture.loadFromFile(texturePath)) {
-        std::cerr << "Couldn't load stall's texture: " << texturePath << "\n";
-    } else {
-        sprite.setTexture(texture, true); 
-    }
-}
-
-void Stall::update(float dt, sf::RenderWindow &window) {
-    sf::Vector2f playerPos = player->getPosition();
-    float playerCenterX = playerPos.x + 31.0f;
-    float playerCenterY = playerPos.y + 32.0f;
-
-    isPlayerNear = hitbox.getGlobalBounds().contains({playerCenterX, playerCenterY});
-
-    if (isPlayerNear) {
-        promptText.setString("Press 'E' to interact with Stall");
-        promptText.setPosition(sf::Vector2f({hitbox.getPosition().x, hitbox.getPosition().y - 30.0f}));
-    }
-}
-
-void Stall::draw(sf::RenderWindow &window) {
-    window.draw(hitbox);
-    window.draw(sprite);
-    
-    if (isPlayerNear) {
-        window.draw(promptText);
-    }
-}
-
+#include "world_objects.hpp"
 
 // ----------------------
 // ------ MapLoader -----
@@ -189,7 +8,7 @@ void Stall::draw(sf::RenderWindow &window) {
 void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint) {
 
     // Map
-    auto map = std::make_unique<TileMap>("maps/tiles_overworld.png", "maps/overworld.csv", 300, 150, tileSize, std::vector<int>{3});
+    auto map = std::make_unique<TileMap>("maps/tiles_overworld.png", "maps/overworld.csv", 300, 150, tileSize, std::vector<int>{3}, 3);
     TileMap* tileMap = map.get(); // Save a pointer so we can add collision boxes
     GameObject::world = map.get(); 
     gameObjects.emplace_back(std::move(map));
@@ -201,7 +20,7 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
         "objects/cave.png", 
         player, 
         LocationID::Cave, 
-        sf::Vector2f({tileSize * 8.0f, tileSize * 38.0f}), 
+        sf::Vector2f({tileSize * 26.0f, tileSize * 78.0f}), // Player's spawnpoint after interacting
         sf::Vector2f({220.0f, 130.0f}), // Dimensions of the entrance 
         sf::Vector2f({168.0f, 128.0f}) // Offset of the entrance 
     );
@@ -214,11 +33,11 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
 
     // Home
     auto home = std::make_unique<SwitchLocation>(        
-        tileSize * 180, tileSize * 110, // Object's position
+        tileSize * 180, tileSize * 109 + 24.0f, // Object's position
         "objects/home.png", 
         player, 
         LocationID::Home, 
-        sf::Vector2f({tileSize * 4.0f, tileSize * 8.0f}), 
+        sf::Vector2f({tileSize * 4.0f, tileSize * 8.0f}), // Player's spawnpoint after interacting
         sf::Vector2f({70.0f, 80.0f}), // Dimensions of the entrance 
         sf::Vector2f({120.0f, 150.0f}) // Offset of the entrance
     );
@@ -245,10 +64,12 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
     tileMap->addSolidBox(sf::FloatRect(sf::Vector2f(stallBounds.position.x, stallBounds.position.y), sf::Vector2f(stallBounds.size.x, stallBounds.size.y)));
     gameObjects.emplace_back(std::move(stall));
 
-    // Entities
+    // --- Entities ---
+
+    // Hares
     // sf::FloatRect({left_x, top_y}, {width, height})
-    // Around the Player's home
-    int numberOfEntities1 = rand() % 21 + 20; // 20 - 40;
+    // Whole right side of the map
+    int numberOfEntities1 = rand() % 31 + 30; // 30 - 60;
     sf::FloatRect hareSpawnpoint1({tileSize * 170.0f, tileSize * 30.0f}, {tileSize * 120.0f, tileSize * 150.0f});
     spawnHare(gameObjects, player, hareSpawnpoint1, numberOfEntities1);
 
@@ -257,49 +78,90 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
     sf::FloatRect hareSpawnpoint2({tileSize * 20.0f, tileSize * 20.0f}, {tileSize * 180.0f, tileSize * 40.0f});
     spawnHare(gameObjects, player, hareSpawnpoint2, numberOfEntities2);
 
+    // Close to the spawn area
+    int numberOfEntities6 = rand() % 11 + 10; // 10 - 20;
+    sf::FloatRect hareSpawnpoint3({tileSize * 170.0f, tileSize * 80.0f}, {tileSize * 120.0f, tileSize * 80.0f});
+    spawnHare(gameObjects, player, hareSpawnpoint3, numberOfEntities6);
+
+    // Boars
     // Top, right part of the map
-    int numberOfEntities3 = rand() % 5 + 5; // 5 - 10;
-    sf::FloatRect boarSpawnpoint1({tileSize * 170.0f, tileSize * 30.0f}, {tileSize * 120.0f, tileSize * 120.0f});
+    int numberOfEntities3 = rand() % 16 + 15; // 15 - 30;
+    sf::FloatRect boarSpawnpoint1({tileSize * 200.0f, tileSize * 10.0f}, {tileSize * 100.0f, tileSize * 75.0f});
     spawnBoar(gameObjects, player, boarSpawnpoint1, numberOfEntities3);
 
     // Bottom, right part of the map
-    int numberOfEntities4 = rand() % 2 + 1; // 1 - 3;
-    sf::FloatRect boarSpawnpoint2({tileSize * 170.0f, tileSize * 140.0f}, {tileSize * 120.0f, tileSize * 10.0f});
+    int numberOfEntities4 = rand() % 3 + 1; // 1 - 3;
+    sf::FloatRect boarSpawnpoint2({tileSize * 170.0f, tileSize * 142.0f}, {tileSize * 100.0f, tileSize * 15.0f});
     spawnBoar(gameObjects, player, boarSpawnpoint2, numberOfEntities4);
 
     // Left part of the map
     int numberOfEntities5 = rand() % 20 + 40; // 40 - 60;
-    sf::FloatRect boarSpawnpoint3({tileSize * 20.0f, tileSize * 20.0f}, {tileSize * 180.0f, tileSize * 150.0f});
+    sf::FloatRect boarSpawnpoint3({tileSize * 20.0f, tileSize * 20.0f}, {tileSize * 180.0f, tileSize * 100.0f});
     spawnBoar(gameObjects, player, boarSpawnpoint3, numberOfEntities5);
+
+    // Bears
+    // Left part of the map
+    sf::FloatRect bearSpawnpoint1({tileSize * 20.0f, tileSize * 20.0f}, {tileSize * 160.0f, tileSize * 100.0f});
+    spawnBear(gameObjects, player, bearSpawnpoint1, 4);
+
+    // Right part of the map
+    sf::FloatRect bearSpawnpoint2({tileSize * 180.0f, tileSize * 20.0f}, {tileSize * 120.0f, tileSize * 100.0f});
+    spawnBear(gameObjects, player, bearSpawnpoint2, 2);
 }
 
-
 // Cave
+bool MapLoader::bearBossDefeated = false;
+Bear* MapLoader::activeBearBoss = nullptr;
+
 void MapLoader::loadCave(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint) {
 
-    // Loads the 20x40 Cave map
-    auto map = std::make_unique<TileMap>("maps/tiles_cave.png", "maps/cave.csv", 20, 40, tileSize, std::vector<int>{1});
+    // Loads the 50x80 Cave map
+    auto map = std::make_unique<TileMap>("maps/tiles_cave.png", "maps/cave.csv", 50, 80, tileSize, std::vector<int>{1}, 1);
     GameObject::world = map.get(); 
     gameObjects.emplace_back(std::move(map));
 
     // Cave exit (to go back to overworld)
     gameObjects.emplace_back(std::make_unique<SwitchLocation>(
-        tileSize * 8, tileSize * 39, // Spawn point of the object
+        tileSize * 20, tileSize * 79, // Spawn point of the object
         "objects/cave_exit.png",
         player, 
         LocationID::Overworld, 
         sf::Vector2f({tileSize * 28.0f, tileSize * 134.0f}), // Spawn point of the player after interaction
-        sf::Vector2f({tileSize * 3.0f + 20.0f, tileSize * 1.0f}), // Dimensions of the entrance 
+        sf::Vector2f({tileSize * 9.0f + 20.0f, tileSize * 1.0f}), // Dimensions of the entrance 
         sf::Vector2f({-20.0f, -10.0f}) // Offset of the entrance 
     ));
+
+    // Spawns the bear only if it wasn't defeated yet
+    if (!bearBossDefeated) {
+        auto bearBoss = std::make_unique<Bear>(tileSize * 20.0f, tileSize * 20.0f, player, true);
+        
+        // Pointer
+        activeBearBoss = bearBoss.get(); 
+        
+        gameObjects.emplace_back(std::move(bearBoss));
+    } else {
+        // Pointer is null if the bear isn't spawned
+        activeBearBoss = nullptr;
+    }
 }
+
+    // Checks if the bear died during the player's visit
+    void MapLoader::saveCaveState() {
+        if (activeBearBoss != nullptr) {
+            if (activeBearBoss->checkIfDead()) {
+                bearBossDefeated = true; // Mark as dead
+            }
+        }
+        // Prevents unnecessary pointers when the map gets unloaded 
+        activeBearBoss = nullptr;
+    }
 
 
 // Home
 void MapLoader::loadHome(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint) {
 
     // Loads the 9x10 Home map
-    auto map = std::make_unique<TileMap>("maps/tiles_home.png", "maps/home.csv", 9, 10, tileSize, std::vector<int>{1, 2, 3, 4});
+    auto map = std::make_unique<TileMap>("maps/tiles_home.png", "maps/home.csv", 9, 10, tileSize, std::vector<int>{1, 2, 3, 4}, 99);
     GameObject::world = map.get(); 
     gameObjects.emplace_back(std::move(map));
 
@@ -338,7 +200,7 @@ void MapLoader::spawnHare(std::vector<std::unique_ptr<GameObject>> &gameObjects,
             spawnY = spawnArea.position.y + (randomY * spawnArea.size.y);
 
             // Ensures GameObject::world exists and the tile isn't solid
-            if (GameObject::world != nullptr && !GameObject::world->isSolid(spawnX, spawnY)) {
+            if (GameObject::world != nullptr && !GameObject::world->isSolid(spawnX, spawnY, false)) {
                 validSpotFound = true;
                 break; // If a good spot is found, exits the attempt loop
             }
@@ -360,7 +222,7 @@ void MapLoader::spawnBoar(std::vector<std::unique_ptr<GameObject>> &gameObjects,
         int maxAttempts = 30; 
 
         float offsetX = 16.0f; // ~~ half the boar's width
-        float offsetY = 32.0f; // ~~ the boar's full height
+        float offsetY = 32.0f; // ~~ half the boar's height
 
         for (int attempt = 0; attempt < maxAttempts; ++attempt) {
             float randomX = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
@@ -369,12 +231,12 @@ void MapLoader::spawnBoar(std::vector<std::unique_ptr<GameObject>> &gameObjects,
             spawnX = spawnArea.position.x + (randomX * spawnArea.size.x);
             spawnY = spawnArea.position.y + (randomY * spawnArea.size.y);
 
-            // Calculates where the feet will actually land
+            // Calculates where the feet will land
             float feetX = spawnX + offsetX;
             float feetY = spawnY + offsetY;
 
             // Check if the spot is valid based on where the feet are
-            if (GameObject::world != nullptr && !GameObject::world->isSolid(feetX, feetY)) {
+            if (GameObject::world != nullptr && !GameObject::world->isSolid(feetX, feetY, false)) {
                 validSpotFound = true;
                 break; 
             }
@@ -388,14 +250,50 @@ void MapLoader::spawnBoar(std::vector<std::unique_ptr<GameObject>> &gameObjects,
     }
 }
 
+void MapLoader::spawnBear(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, sf::FloatRect spawnArea, int entityCount) {
+    for (int i = 0; i < entityCount; ++i) {
+        float spawnX = 0.0f;
+        float spawnY = 0.0f;
+        bool validSpotFound = false;
+        int maxAttempts = 30; 
+
+        float offsetX = 25.0f; // ~~ half the bear's width
+        float offsetY = 20.0f; // ~~ half the bear's height
+
+        for (int attempt = 0; attempt < maxAttempts; ++attempt) {
+            float randomX = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+            float randomY = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+
+            spawnX = spawnArea.position.x + (randomX * spawnArea.size.x);
+            spawnY = spawnArea.position.y + (randomY * spawnArea.size.y);
+
+            // Calculates where the feet will land
+            float feetX = spawnX + offsetX;
+            float feetY = spawnY + offsetY;
+
+            // Check if the spot is valid based on where the feet are
+            if (GameObject::world != nullptr && !GameObject::world->isSolid(feetX, feetY, false)) {
+                validSpotFound = true;
+                break; 
+            }
+        }
+
+        if (validSpotFound) {
+            gameObjects.emplace_back(std::make_unique<Bear>(spawnX, spawnY, player, false));
+        } else {
+            std::cerr << "Couldn't find a valid spawn point for Bear in the designated area\n";
+        }
+    }
+}
+
 
 
 
 // ----------------------
 // ------- TileMap ------
 // ----------------------
-TileMap::TileMap(const std::string &textureFile, const std::string &csvFile, int width, int height, int tSize, std::vector<int> solids) 
-    : GameObject(0, 0), mapWidth(width), mapHeight(height), tileSize(tSize), solidTiles(solids) {
+TileMap::TileMap(const std::string &textureFile, const std::string &csvFile, int width, int height, int tSize, std::vector<int> solids, int waterTile) 
+    : GameObject(0, 0), mapWidth(width), mapHeight(height), tileSize(tSize), solidTiles(solids), waterTile(waterTile) {
     // Loads the texture
     if (!texture.loadFromFile(textureFile)) {
         std::cerr << "Couldn't load the tileset\n";
@@ -419,7 +317,7 @@ TileMap::TileMap(const std::string &textureFile, const std::string &csvFile, int
         }
         file.close();
     } else {
-        std::cerr << "ERROR: Could not open file: " << csvFile << "\n";
+        std::cerr << "Couldn't open file: " << csvFile << "\n";
     }
 
     int expectedSize = mapWidth * mapHeight;
@@ -486,7 +384,7 @@ void TileMap::addSolidBox(const sf::FloatRect& box) {
     solidBoxes.push_back(box);
 }
 
-bool TileMap::isSolid(float pixelX, float pixelY) const {
+bool TileMap::isSolid(float pixelX, float pixelY, bool isProjectile) const {
     // Checks custom solid boundary boxes for collision 
     for (const auto& box : solidBoxes) {
         if (box.contains(sf::Vector2f(pixelX, pixelY))) {
@@ -498,10 +396,16 @@ bool TileMap::isSolid(float pixelX, float pixelY) const {
     int tileX = static_cast<int>(pixelX / tileSize);
     int tileY = static_cast<int>(pixelY / tileSize);
 
+    // Prevents walking out of bounds
     if (tileX < 0 || tileX >= mapWidth || tileY < 0 || tileY >= mapHeight) {
         return true; 
     }
 
     int tileID = mapData[tileX + tileY * mapWidth];
+
+    if(isProjectile && tileID == waterTile) {
+        return false;
+    }
+
     return std::find(solidTiles.begin(), solidTiles.end(), tileID) != solidTiles.end();
 }

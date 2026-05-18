@@ -22,7 +22,7 @@ void Projectile::update(float dt, sf::RenderWindow &window) {
     // Collision with objects
     sf::Vector2f pos = shape.getPosition();
 
-    if (GameObject::world->isSolid(pos.x + radius, pos.y + radius)) {
+    if (GameObject::world->isSolid(pos.x + radius, pos.y + radius, true)) {
         active = false; 
     }
 }
@@ -36,7 +36,7 @@ sf::FloatRect Projectile::getBounds() const {
 // ------- Player -------
 // ----------------------
 Player::Player(float startX, float startY) 
-: GameObject(startX, startY), animation(31, 41, 0.25f), facingRow(0), nextDamageCost(25.0f), nextReloadCost(25.0f), nextVelocityCost(10.0f) {
+: GameObject(startX, startY), animation(31, 41, 0.25f), facingRow(0), nextDamageCost(25.0f), nextReloadCost(25.0f), nextVelocityCost(10.0f), cigarettesCost(50.0f) {
     if (!texture.loadFromFile("textures/Player.png")) {
         std::cerr << "Couldn't load player texture \n";
     } else {
@@ -44,7 +44,7 @@ Player::Player(float startX, float startY)
         sprite.setTextureRect(sf::IntRect({0, 0}, {31, 41})); 
     }
 
-    speed = 1200.0f;
+    speed = 200.0f;
 
     movement_cooldown = 0.0f;
     shot_cooldown = 0.0f;
@@ -57,7 +57,8 @@ Player::Player(float startX, float startY)
     level = 0;
     experience = 0;
     experienceThreshold = 200;
-    cash = 2000.0f;
+    speedThreshold = 200;
+    cash = 0.0f;
 
     base_shot_cooldown = 0.75f;
     bullet_velocity = 600.0f;
@@ -132,15 +133,15 @@ void Player::update(float dt, sf::RenderWindow &window) {
                     sf::Vector2f currentPos = sprite.getPosition();
 
                     // Movement without obstructions
-                    if (!GameObject::world->isSolid(feetX, feetY)) {
+                    if (!GameObject::world->isSolid(feetX, feetY, false)) {
                         sprite.setPosition(nextPos);
                     } else {
                         // Try moving to the side
-                        if (!GameObject::world->isSolid(nextPos.x + offsetX, currentPos.y + offsetY)) {
+                        if (!GameObject::world->isSolid(nextPos.x + offsetX, currentPos.y + offsetY, false)) {
                             sprite.setPosition({nextPos.x, currentPos.y});
                         } 
                         // Try moving up or down
-                        else if (!GameObject::world->isSolid(currentPos.x + offsetX, nextPos.y + offsetY)) {
+                        else if (!GameObject::world->isSolid(currentPos.x + offsetX, nextPos.y + offsetY, false)) {
                             sprite.setPosition({currentPos.x, nextPos.y});
                         } 
                         // Movement completely blocked
@@ -236,12 +237,25 @@ void Player::levelUp() {
     level += 1;
     experienceThreshold = 200 + level * 100;
 
-    if (speed < 500.0f) {
-        speed += 15.0f;
+    if(200.0f + 10.0f * level >= speedThreshold) {
+        speed = speedThreshold;
+    } else if (200.0f + 10.0f * level < speedThreshold) {
+        speed = 200.0f + 10.0f * level;
     }
 
-    hp = 100 + 10 * level;
     maxHp = 100 + 10 * level;
+}
+
+void Player::raiseSpeedThreshold(int amount) {
+    speedThreshold += amount;
+    
+    if(200.0f + 10.0f * level >= speedThreshold) {
+        speed = speedThreshold;
+    } else if (200.0f + 10.0f * level < speedThreshold) {
+        speed = 200.0f + 10.0f * level;
+    }
+
+    cigarettesCost += 100.0f;
 }
 
 bool Player::spendCash(float amount) {
@@ -285,6 +299,15 @@ void Player::takeDamage(int amount) {
     hp -= amount;
 }
 
+void Player::healHp(int amount) {
+    if(hp + amount >= maxHp) {
+        hp = maxHp;
+    } else {
+        hp += amount;
+    }
+}
+
+
 
 // Getters
 float Player::getNextDamageCost() const { return nextDamageCost; }
@@ -292,6 +315,8 @@ float Player::getNextDamageCost() const { return nextDamageCost; }
 float Player::getNextReloadCost() const { return nextReloadCost; }
 
 float Player::getNextVelocityCost() const { return nextVelocityCost; }
+
+float Player::getNextCigarettesCost() const { return cigarettesCost; }
 
 bool Player::isAttacking() const { return movement_cooldown > 0.0f; }
 
@@ -306,6 +331,8 @@ int Player::getHp() const { return hp; }
 int Player::getMaxHp() const { return maxHp; }
 
 int Player::getExperienceThreshold() const { return experienceThreshold; }
+
+int Player::getSpeedThreshold() const { return speedThreshold; }
 
 int Player::getExperience() const { return experience; }
 

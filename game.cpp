@@ -62,7 +62,7 @@ unsigned int screenWidth = desktop.size.x;
 unsigned int screenHeight = desktop.size.y;
 
 Game::Game() 
-    : window(sf::VideoMode({screenWidth, screenHeight}),  "Hunter Simulator", sf::Style::None, sf::State::Fullscreen), pauseText(font), cashText(font) {}
+    : window(sf::VideoMode({screenWidth, screenHeight}),  "Hunter Simulator", sf::Style::None, sf::State::Fullscreen), pauseText(font), cashText(font), restartText(font) {}
 
 Game::~Game() = default;
 
@@ -81,19 +81,33 @@ void Game::init() {
     pauseText.setString("PAUSED\n\nPress ESC to Resume\nPress Q to Quit");
     pauseText.setCharacterSize(48);
     pauseText.setFillColor(sf::Color::White);
-    
 
     // Centers the text alignment
-    sf::FloatRect textBounds = pauseText.getLocalBounds();
-    pauseText.setOrigin({textBounds.size.x / 2.0f, textBounds.size.y / 2.0f});
+    sf::FloatRect pauseTextBounds = pauseText.getLocalBounds();
+    pauseText.setOrigin({pauseTextBounds.size.x / 2.0f, pauseTextBounds.size.y / 2.0f});
 
     // Dark overlay
     pauseOverlay.setFillColor(sf::Color(0, 0, 0, 150));
 
+
+    // -- Restart --
+    restartText.setFont(font);
+    restartText.setString("\n\nPress R to Restart\nPress Q to Quit");
+    restartText.setCharacterSize(28);
+    restartText.setFillColor(sf::Color(255, 255, 255));
+
+    // Centers the text alignment
+    sf::FloatRect restartTextBounds = restartText.getLocalBounds();
+    restartText.setOrigin({restartTextBounds.size.x / 2.0f, restartTextBounds.size.y / 2.0f - 20.0f});
+
+    // Transparent
+    restartOverlay.setFillColor(sf::Color(255, 0, 0, 80));
+
+
     // -- Cash display --
     cashText.setFont(font);
     cashText.setCharacterSize(36); // Adjust size as needed
-    cashText.setFillColor(sf::Color::Yellow); // Using yellow to represent gold/money
+    cashText.setFillColor(sf::Color::Yellow); // Using yellow to represent cash
     cashText.setOutlineColor(sf::Color::Black);
     cashText.setOutlineThickness(2.0f);
     // ------------------------
@@ -104,6 +118,7 @@ void Game::init() {
 }
 
 void Game::loadLocation(LocationID dest, sf::Vector2f spawnPoint) {
+    MapLoader::saveCaveState(); // Remembers situation in the cave
     GameObjects.clear(); // Deletes the old player, map, and entities
     currentLocation = dest;
 
@@ -116,7 +131,7 @@ void Game::loadLocation(LocationID dest, sf::Vector2f spawnPoint) {
         camera.setSize({1280, 720});
     } else if (dest == LocationID::Cave) {
         MapLoader::loadCave(GameObjects, player.get(), tileSize, spawnPoint);
-        camera.setSize({680, 360});
+        camera.setSize({1280, 720});
     } else if (dest == LocationID::Home) {
         MapLoader::loadHome(GameObjects, player.get(), tileSize, spawnPoint);
         camera.setSize({680, 360});
@@ -166,8 +181,8 @@ void Game::update(float dt) {
                 mapWidthPixels = 300.0f * tileSize;
                 mapHeightPixels = 150.0f * tileSize;
             } else if (currentLocation == LocationID::Cave) {
-                mapWidthPixels = 20.0f * tileSize;
-                mapHeightPixels = 40.0f * tileSize;
+                mapWidthPixels = 50.0f * tileSize;
+                mapHeightPixels = 80.0f * tileSize;
             } else if (currentLocation == LocationID::Home) {
                 mapWidthPixels = 9.0f * tileSize;   // Home is 9 tiles wide
                 mapHeightPixels = 10.0f * tileSize; // Home is 10 tiles high
@@ -203,6 +218,7 @@ void Game::update(float dt) {
                 // Checks if the object is a hare
                 Hare* hare = dynamic_cast<Hare*>(object.get());
                 Boar* boar = dynamic_cast<Boar*>(object.get());
+                Bear* bear = dynamic_cast<Bear*>(object.get());
                 
                 if (hare && hare->active) {
                     for (auto& proj : player->getProjectiles()) {
@@ -237,6 +253,30 @@ void Game::update(float dt) {
                         }
                     }
                 }
+
+                if (bear && bear->active) {
+                    for (auto& proj : player->getProjectiles()) {
+                        
+                        if (proj->active && bear->getBounds().findIntersection(proj->getBounds())) {
+                            
+                            proj->active = false; // The bullet is destroyed on impact
+                            
+                            bear->takeDamage(player->getDamage()); // will reduce hp of the bear
+
+                            if (bear->checkIfDead() && bear->getDeathTimer() == 0) { 
+                                
+                                // Checks if it's the boss or a normal bear for reward
+                                if (bear->checkIfBoss()) {
+                                    player->addExperience(3000 * bear->getDiff()); 
+                                    player->addCash(500.0f * bear->getDiff() * 5.0f);
+                                } else {
+                                    player->addExperience(500 * bear->getDiff()); 
+                                    player->addCash(50.0f * bear->getDiff() * 5.0f);
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -266,12 +306,12 @@ void Game::run() {
             
             if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
                 // Toggle pause on Escape
-                if (keyPressed->scancode == sf::Keyboard::Scancode::Escape) {
+                if (keyPressed->scancode == sf::Keyboard::Scancode::Escape && !player->checkIfDead()) {
                     isPaused = !isPaused;
                 }
                 
-                // Quit if 'Q' is pressed while paused
-                if (isPaused && keyPressed->scancode == sf::Keyboard::Scancode::Q) {
+                // Quit if 'Q' is pressed while paused or while dead
+                if ((isPaused || player->checkIfDead()) && keyPressed->scancode == sf::Keyboard::Scancode::Q) {
                     window.close();
                 }
 
@@ -362,6 +402,18 @@ void Game::render() {
 
         window.draw(pauseOverlay);
         window.draw(pauseText);
+    }
+
+    if(player->checkIfDead()) {
+        sf::Vector2f cameraCenter = camera.getCenter();
+        sf::Vector2f cameraSize = camera.getSize();
+
+        restartOverlay.setSize(cameraSize);
+        restartOverlay.setPosition(cameraCenter - (cameraSize / 2.0f));
+        restartText.setPosition(cameraCenter);
+        
+        window.draw(restartOverlay);
+        window.draw(restartText);
     }
 
     window.display();

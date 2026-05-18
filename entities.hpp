@@ -72,3 +72,29 @@ public:
 
     void update(float dt, sf::RenderWindow &window) override;
 };
+
+class Bear : public Creature {
+private:
+    float moveTimer;       
+    float moveInterval;       
+    float bounceTimer;
+
+    float idleTimer;
+
+    float attackTimer;
+    float attackCooldown;
+    int attackDamage;
+    bool turningLocked;
+
+    float pursuitTimer;
+    float aggroRadius;
+    bool aggroed;
+    bool boss;
+
+public:
+    Bear(float startX, float startY, Player *player, bool boss);
+
+    void update(float dt, sf::RenderWindow &window) override;
+
+    bool checkIfBoss() const;
+};

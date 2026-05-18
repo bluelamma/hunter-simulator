@@ -30,6 +30,7 @@ private:
     float shot_cooldown;
     bool isMoving;
     int speed;
+    int speedThreshold;
 
     // Combat stuff
     int hp;
@@ -45,6 +46,7 @@ private:
     float nextDamageCost;
     float nextReloadCost;
     float nextVelocityCost;
+    float cigarettesCost;
 public:
     Player(float startX, float startY);
     void setPosition(sf::Vector2f Pos);
@@ -57,11 +59,13 @@ public:
     bool spendCash(float amount);
 
     void takeDamage(int amount);
+    void healHp(int amount);
 
     // Upgrading stuff
     void upgradeDamage(int amount);
     void upgradeReloadSpeed(float amount);
     void upgradeBulletVelocity(float amount);
+    void raiseSpeedThreshold(int amount);
 
     // Getters
     bool isAttacking() const;
@@ -69,10 +73,12 @@ public:
     float getNextDamageCost() const;
     float getNextReloadCost() const;
     float getNextVelocityCost() const;
+    float getNextCigarettesCost() const;
     int getDamage() const;
     int getHp() const;
     int getMaxHp() const;
     int getExperienceThreshold() const;
+    int getSpeedThreshold() const;
     int getExperience() const;
     bool checkIfDead() const;
     sf::FloatRect getBounds() const;
