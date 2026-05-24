@@ -36,7 +36,9 @@ sf::FloatRect Projectile::getBounds() const {
 // ------- Player -------
 // ----------------------
 Player::Player(float startX, float startY) 
-: GameObject(startX, startY), animation(31, 41, 0.25f), facingRow(0), nextDamageCost(25.0f), nextReloadCost(25.0f), nextVelocityCost(10.0f), cigarettesCost(50.0f) {
+    : GameObject(startX, startY), animation(31, 41, 0.25f), facingRow(0), nextDamageCost(25.0f), 
+    nextReloadCost(25.0f), nextVelocityCost(10.0f), cigarettesCost(50.0f), shootSound(shootBuffer), deathSound(deathBuffer) {
+
     if (!texture.loadFromFile("textures/Player.png")) {
         std::cerr << "Couldn't load player texture \n";
     } else {
@@ -44,24 +46,37 @@ Player::Player(float startX, float startY)
         sprite.setTextureRect(sf::IntRect({0, 0}, {31, 41})); 
     }
 
-    speed = 200.0f;
+    if (shootBuffer.loadFromFile("sounds/shootingSound.mp3")) {
+        shootSound.setBuffer(shootBuffer);
+    }
+    if (deathBuffer.loadFromFile("sounds/deathSound.mp3")) {
+        deathSound.setBuffer(deathBuffer);
+    }
+
+    speed = 2000.0f;
 
     movement_cooldown = 0.0f;
+    movementBlocked_cooldown = 0.0f;
     shot_cooldown = 0.0f;
     isMoving = false;
     isDead = false;
+    movementBlocked = false;
 
     hp = 100;
     maxHp = 100;
     damage = 30;
     level = 0;
     experience = 0;
+    score = 0;
     experienceThreshold = 200;
     speedThreshold = 200;
     cash = 0.0f;
 
     base_shot_cooldown = 0.75f;
     bullet_velocity = 600.0f;
+
+    overrideStartFrame = 0;
+    overrideEndFrame = 0;
 
     sprite.setScale(sf::Vector2f({2.0f, 2.0f}));
 }
@@ -80,18 +95,28 @@ void Player::update(float dt, sf::RenderWindow &window) {
         levelUp();
     }
 
+    if (movementBlocked == true) {
+        movementBlocked_cooldown -= dt;
+        animation.update(facingRow, overrideStartFrame, overrideEndFrame, dt, sprite);
+        if (movementBlocked_cooldown <= 0) {
+            movementBlocked = false;
+            animation.setFrameDuration(0.25f);
+        }
+    }
 
-    if(hp <= 0) {
+
+    if(hp <= 0 && !isDead) {
         isDead = true;
+        deathSound.play();
     }
 
     float speedDt = speed * dt;
 
-    if (!isDead) {
+    if (!isDead && !movementBlocked) {
         int startFrame = 0;
         int endFrame = 0;   
 
-        if (movement_cooldown <= 0) {
+        if (movement_cooldown <= 0 && !movementBlocked) {
             isMoving = false;
 
             sf::Vector2f nextPos = sprite.getPosition();
@@ -195,6 +220,7 @@ void Player::update(float dt, sf::RenderWindow &window) {
                 }
 
                 if (shot_cooldown <= 0) {
+                    shootSound.play();
                     projectiles.push_back(std::make_unique<Projectile>(spawnX, spawnY, 2.0f, direction, bullet_velocity));
                     shot_cooldown = base_shot_cooldown; 
                 }
@@ -210,7 +236,7 @@ void Player::update(float dt, sf::RenderWindow &window) {
             startFrame = 3;
             endFrame = 3;
         }
-    } else {
+    } else if (!movementBlocked) {
         if(facingRow == 0) {
             sprite.setTextureRect(sf::IntRect({0, 82}, {60, 18}));
         } else {
@@ -232,6 +258,15 @@ void Player::update(float dt, sf::RenderWindow &window) {
     );
 }
 
+void Player::setAnimation(float dt, int startFrame, int endFrame, float totalDuration, float frameDuration) {
+    overrideStartFrame = startFrame;
+    overrideEndFrame = endFrame;
+    movementBlocked = true;
+    movementBlocked_cooldown = totalDuration;
+
+    animation.setFrameDuration(frameDuration);
+}
+
 void Player::levelUp() {
     experience -= experienceThreshold;
     level += 1;
@@ -244,6 +279,7 @@ void Player::levelUp() {
     }
 
     maxHp = 100 + 10 * level;
+    hp += 10;
 }
 
 void Player::raiseSpeedThreshold(int amount) {
@@ -289,6 +325,7 @@ void Player::setPosition(sf::Vector2f Pos) {
 
 void Player::addExperience(int amount) {
     experience += amount;
+    score += amount;
 }
 
 void Player::addCash(float amount) {
@@ -335,6 +372,10 @@ int Player::getExperienceThreshold() const { return experienceThreshold; }
 int Player::getSpeedThreshold() const { return speedThreshold; }
 
 int Player::getExperience() const { return experience; }
+
+int Player::getScore() const { return score; }
+
+int Player::getLevel() const { return level; }
 
 float Player::getCash() const { return cash; }
 

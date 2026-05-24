@@ -1,6 +1,8 @@
 #include "entities.hpp"
 #include "world.hpp"
 #include "player.hpp"
+#include "textDisplay.hpp"
+#include "pickup.hpp"
 
 TileMap* GameObject::world = nullptr;
 
@@ -30,12 +32,11 @@ void Animation::update(int row, int startFrame, int endFrame, float dt, sf::Spri
     int left = frameWidth * currentFrame;
     int top = frameHeight * row;
 
-    // Player's sprite was moving one pixel to the right, that corrects it
-    if(startFrame == 3 && row == 1) {
-        left += 1;
-    }
-
     sprite.setTextureRect(sf::IntRect({left, top}, {frameWidth, frameHeight}));
+}
+
+void Animation::setFrameDuration(float newHoldTime) {
+    holdTime = newHoldTime;
 }
 
 // -----------------------
@@ -62,7 +63,7 @@ unsigned int screenWidth = desktop.size.x;
 unsigned int screenHeight = desktop.size.y;
 
 Game::Game() 
-    : window(sf::VideoMode({screenWidth, screenHeight}),  "Hunter Simulator", sf::Style::None, sf::State::Fullscreen), pauseText(font), cashText(font), restartText(font) {}
+    : window(sf::VideoMode({screenWidth, screenHeight}),  "Hunter Simulator", sf::Style::None, sf::State::Fullscreen) {}
 
 Game::~Game() = default;
 
@@ -70,56 +71,16 @@ void Game::init() {
     srand(static_cast<unsigned int>(time(nullptr)));
 
     isPaused = false;
-
-    // --- HUD ---
-    // -- Pausing -- 
-    if (!font.openFromFile("fonts/pixelFont.ttf")) { 
-        std::cerr << "Failed to load the font\n";
-    }
     
-    pauseText.setFont(font);
-    pauseText.setString("PAUSED\n\nPress ESC to Resume\nPress Q to Quit");
-    pauseText.setCharacterSize(48);
-    pauseText.setFillColor(sf::Color::White);
-
-    // Centers the text alignment
-    sf::FloatRect pauseTextBounds = pauseText.getLocalBounds();
-    pauseText.setOrigin({pauseTextBounds.size.x / 2.0f, pauseTextBounds.size.y / 2.0f});
-
-    // Dark overlay
-    pauseOverlay.setFillColor(sf::Color(0, 0, 0, 150));
-
-
-    // -- Restart --
-    restartText.setFont(font);
-    restartText.setString("\n\nPress R to Restart\nPress Q to Quit");
-    restartText.setCharacterSize(28);
-    restartText.setFillColor(sf::Color(255, 255, 255));
-
-    // Centers the text alignment
-    sf::FloatRect restartTextBounds = restartText.getLocalBounds();
-    restartText.setOrigin({restartTextBounds.size.x / 2.0f, restartTextBounds.size.y / 2.0f - 20.0f});
-
-    // Transparent
-    restartOverlay.setFillColor(sf::Color(255, 0, 0, 80));
-
-
-    // -- Cash display --
-    cashText.setFont(font);
-    cashText.setCharacterSize(36); // Adjust size as needed
-    cashText.setFillColor(sf::Color::Yellow); // Using yellow to represent cash
-    cashText.setOutlineColor(sf::Color::Black);
-    cashText.setOutlineThickness(2.0f);
-    // ------------------------
-
     // Start game at the home
     player = std::make_unique<Player>(0.0f, 0.0f);
+    textDisplay = std::make_unique<TextDisplay>(player.get());
     loadLocation(LocationID::Home, sf::Vector2f(tileSize * 4.0f, tileSize * 2.0f));
 }
 
 void Game::loadLocation(LocationID dest, sf::Vector2f spawnPoint) {
     MapLoader::saveCaveState(); // Remembers situation in the cave
-    GameObjects.clear(); // Deletes the old player, map, and entities
+    GameObjects.clear(); // Deletes the old map, and entities
     currentLocation = dest;
 
     if (player) {
@@ -212,75 +173,41 @@ void Game::update(float dt) {
             camera.setCenter({cameraX, cameraY});
         }
 
+        // Meat will be stored here
+        std::vector<std::unique_ptr<GameObject>> newDrops;
+
         // Projectile collision logic
         if (player != nullptr) {
             for (auto& object : GameObjects) {
-                // Checks if the object is a hare
-                Hare* hare = dynamic_cast<Hare*>(object.get());
-                Boar* boar = dynamic_cast<Boar*>(object.get());
-                Bear* bear = dynamic_cast<Bear*>(object.get());
+                Creature* creature = dynamic_cast<Creature*>(object.get());
                 
-                if (hare && hare->active) {
+                if (creature && creature->active) {
                     for (auto& proj : player->getProjectiles()) {
                         
-                        if (proj->active && hare->getBounds().findIntersection(proj->getBounds())) {
+                        if (proj->active && creature->getBounds().findIntersection(proj->getBounds())) {
                             
                             proj->active = false; // The bullet is destroyed on impact
+                            creature->takeDamage(player->getDamage()); // Reduces HP
                             
-                            hare->takeDamage(player->getDamage()); // will reduce hp of the hare
-                            
-                            if (hare->checkIfDead() && hare->getDeathTimer() == 0) { 
-                                player->addExperience(50 * hare->getDiff()); 
-                                player->addCash(2.0f * hare->getDiff() * 3.0f );
-                            }
-                        }
-                    }
-                }
-
-                if (boar && boar->active) {
-                    for (auto& proj : player->getProjectiles()) {
-                        
-                        if (proj->active && boar->getBounds().findIntersection(proj->getBounds())) {
-                            
-                            proj->active = false; // The bullet is destroyed on impact
-                            
-                            boar->takeDamage(player->getDamage()); // will reduce hp of the boar
-                            
-                            if (boar->checkIfDead() && boar->getDeathTimer() == 0) { 
-                                player->addExperience(100 * boar->getDiff()); 
-                                player->addCash(5.0f * boar->getDiff() * 5.0f);
-                            }
-                        }
-                    }
-                }
-
-                if (bear && bear->active) {
-                    for (auto& proj : player->getProjectiles()) {
-                        
-                        if (proj->active && bear->getBounds().findIntersection(proj->getBounds())) {
-                            
-                            proj->active = false; // The bullet is destroyed on impact
-                            
-                            bear->takeDamage(player->getDamage()); // will reduce hp of the bear
-
-                            if (bear->checkIfDead() && bear->getDeathTimer() == 0) { 
-                                
-                                // Checks if it's the boss or a normal bear for reward
-                                if (bear->checkIfBoss()) {
-                                    player->addExperience(3000 * bear->getDiff()); 
-                                    player->addCash(500.0f * bear->getDiff() * 5.0f);
-                                } else {
-                                    player->addExperience(500 * bear->getDiff()); 
-                                    player->addCash(50.0f * bear->getDiff() * 5.0f);
-                                }
-                            }
                         }
                     }
                 }
             }
         }
 
-        // Remove dead entities
+        for (auto& object : GameObjects) {
+            Creature* creature = dynamic_cast<Creature*>(object.get());
+            
+            if (creature && creature->checkIfDead() && !creature->active) {
+                creature->grantRewards(newDrops); // Xp/cash/meat
+            }
+        }
+
+        for (auto& drop : newDrops) {
+            GameObjects.push_back(std::move(drop));
+        }
+
+        // Remove inactive objects
         GameObjects.erase(
             std::remove_if(GameObjects.begin(), GameObjects.end(),
                 [](const std::unique_ptr<GameObject>& obj) { return !obj->active; }),
@@ -349,71 +276,23 @@ void Game::render() {
     window.setView(window.getDefaultView()); // Detaches drawing from the camera
 
     if (player != nullptr) {
-        // Left side (hp, xp)
-        // Prevents negative percentages if HP drops below 0
-        float hpPercent = player->getHp() > 0 ? static_cast<float>(player->getHp()) / player->getMaxHp() : 0.0f;
-        float xpPercent = static_cast<float>(player->getExperience()) / player->getExperienceThreshold();
-
-        // XP bar
-        sf::RectangleShape xpBg(sf::Vector2f({200.0f, 8.0f}));
-        xpBg.setPosition(sf::Vector2f({20.0f, 22.0f}));
-        xpBg.setFillColor(sf::Color(0, 0, 50, 150)); // Dark blue background
-
-        sf::RectangleShape xpBar(sf::Vector2f({200.0f * xpPercent, 8.0f}));
-        xpBar.setPosition(sf::Vector2f({20.0f, 22.0f}));
-        xpBar.setFillColor(sf::Color(0, 150, 255, 255)); // Bright blue fill
-
-        // HP bar
-        sf::RectangleShape hpBg(sf::Vector2f({200.0f, 20.0f}));
-        hpBg.setPosition(sf::Vector2f({20.0f, 30.0f})); 
-        hpBg.setFillColor(sf::Color(50, 0, 0, 150)); // Dark red background
-
-        sf::RectangleShape hpBar(sf::Vector2f({200.0f * hpPercent, 20.0f}));
-        hpBar.setPosition(sf::Vector2f({20.0f, 30.0f}));
-        hpBar.setFillColor(sf::Color(255, 0, 0, 255)); // Bright red fill
-
-        // Right side (cash)
-        std::stringstream stream;
-        stream << "Cash: $" << std::fixed << std::setprecision(2) << player->getCash();
-        cashText.setString(stream.str());
-
-        sf::FloatRect textBounds = cashText.getLocalBounds();
-        float screenWidth = window.getSize().x;
-        cashText.setPosition(sf::Vector2f(screenWidth - textBounds.size.x - 20.0f, 20.0f));
-
-        // Draws the hud
-        window.draw(xpBg);
-        window.draw(xpBar);
-        window.draw(hpBg);
-        window.draw(hpBar); 
-        window.draw(cashText);
+        textDisplay->drawHud(window);
     }
 
-    // Pause menu
     window.setView(camera); 
-
+    // Pause menu
     if (isPaused) {
         sf::Vector2f cameraCenter = camera.getCenter();
         sf::Vector2f cameraSize = camera.getSize();
 
-        pauseOverlay.setSize(cameraSize);
-        pauseOverlay.setPosition(cameraCenter - (cameraSize / 2.0f));
-        pauseText.setPosition(cameraCenter);
-
-        window.draw(pauseOverlay);
-        window.draw(pauseText);
+        textDisplay->drawPause(window, cameraCenter, cameraSize);
     }
-
+    // Restart menu
     if(player->checkIfDead()) {
         sf::Vector2f cameraCenter = camera.getCenter();
         sf::Vector2f cameraSize = camera.getSize();
 
-        restartOverlay.setSize(cameraSize);
-        restartOverlay.setPosition(cameraCenter - (cameraSize / 2.0f));
-        restartText.setPosition(cameraCenter);
-        
-        window.draw(restartOverlay);
-        window.draw(restartText);
+        textDisplay->drawRestart(window, cameraCenter, cameraSize);
     }
 
     window.display();

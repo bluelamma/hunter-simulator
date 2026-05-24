@@ -25,7 +25,9 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
         sf::Vector2f({168.0f, 128.0f}) // Offset of the entrance 
     );
     sf::FloatRect caveBounds = cave->getGlobalBounds();
-    // Cave Hitboxe
+    // Safe area around the home
+    tileMap->addSpawnArea(sf::FloatRect(sf::Vector2f(caveBounds.position.x - tileSize * 10, caveBounds.position.y - tileSize * 2), sf::Vector2f(tileSize * 25, tileSize * 20)));
+    // Cave Hitboxes
     tileMap->addSolidBox(sf::FloatRect(caveBounds.position, sf::Vector2f(168.0f, caveBounds.size.y))); // Left of entrance
     tileMap->addSolidBox(sf::FloatRect(sf::Vector2f(caveBounds.position.x + 168.0f + 220.0f, caveBounds.position.y), sf::Vector2f(caveBounds.size.x - (168.0f + 220.0f), caveBounds.size.y))); // Right of entrance
     tileMap->addSolidBox(sf::FloatRect(caveBounds.position, sf::Vector2f(caveBounds.size.x, 128.0f))); // Top part
@@ -33,7 +35,7 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
 
     // Home
     auto home = std::make_unique<SwitchLocation>(        
-        tileSize * 180, tileSize * 109 + 24.0f, // Object's position
+        tileSize * 180 - 2.0f, tileSize * 109 + 24.0f, // Object's position
         "objects/home.png", 
         player, 
         LocationID::Home, 
@@ -43,6 +45,9 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
     );
     home->setSpriteScale({6.0f, 6.0f});
     sf::FloatRect homeBounds = home->getGlobalBounds();
+    // Safe area around the home
+    tileMap->addSpawnArea(sf::FloatRect(sf::Vector2f(homeBounds.position.x - tileSize * 5, homeBounds.position.y - tileSize * 5), sf::Vector2f(tileSize * 20, tileSize * 20)));
+    
     // Hitbox of the home
     // home: 54x40 * 6 => 324x240 // door: 10x12 * 6 => 60x72
     tileMap->addSolidBox(sf::FloatRect(sf::Vector2f(homeBounds.position.x + 18.0f, homeBounds.position.y), sf::Vector2f(114.0f, homeBounds.size.y))); // Left of door
@@ -91,7 +96,7 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
 
     // Bottom, right part of the map
     int numberOfEntities4 = rand() % 3 + 1; // 1 - 3;
-    sf::FloatRect boarSpawnpoint2({tileSize * 170.0f, tileSize * 142.0f}, {tileSize * 100.0f, tileSize * 15.0f});
+    sf::FloatRect boarSpawnpoint2({tileSize * 170.0f, tileSize * 140.0f}, {tileSize * 100.0f, tileSize * 15.0f});
     spawnBoar(gameObjects, player, boarSpawnpoint2, numberOfEntities4);
 
     // Left part of the map
@@ -236,7 +241,7 @@ void MapLoader::spawnBoar(std::vector<std::unique_ptr<GameObject>> &gameObjects,
             float feetY = spawnY + offsetY;
 
             // Check if the spot is valid based on where the feet are
-            if (GameObject::world != nullptr && !GameObject::world->isSolid(feetX, feetY, false)) {
+            if (GameObject::world != nullptr && !GameObject::world->isSolid(feetX, feetY, false) && !GameObject::world->isSpawn(feetX, feetY)) {
                 validSpotFound = true;
                 break; 
             }
@@ -272,7 +277,7 @@ void MapLoader::spawnBear(std::vector<std::unique_ptr<GameObject>> &gameObjects,
             float feetY = spawnY + offsetY;
 
             // Check if the spot is valid based on where the feet are
-            if (GameObject::world != nullptr && !GameObject::world->isSolid(feetX, feetY, false)) {
+            if (GameObject::world != nullptr && !GameObject::world->isSolid(feetX, feetY, false) && !GameObject::world->isSpawn(feetX, feetY)) {
                 validSpotFound = true;
                 break; 
             }
@@ -384,6 +389,10 @@ void TileMap::addSolidBox(const sf::FloatRect& box) {
     solidBoxes.push_back(box);
 }
 
+void TileMap::addSpawnArea(const sf::FloatRect& area) {
+    spawnAreas.push_back(area);
+}
+
 bool TileMap::isSolid(float pixelX, float pixelY, bool isProjectile) const {
     // Checks custom solid boundary boxes for collision 
     for (const auto& box : solidBoxes) {
@@ -408,4 +417,15 @@ bool TileMap::isSolid(float pixelX, float pixelY, bool isProjectile) const {
     }
 
     return std::find(solidTiles.begin(), solidTiles.end(), tileID) != solidTiles.end();
+}
+
+bool TileMap::isSpawn(float pixelX, float pixelY) const {
+    // Checks custom solid boundary boxes for collision 
+    for (const auto& area : spawnAreas) {
+        if (area.contains(sf::Vector2f(pixelX, pixelY))) {
+            return true;
+        } 
+    }
+
+    return false;
 }

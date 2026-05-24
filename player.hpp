@@ -18,6 +18,9 @@ public:
 class Player : public GameObject { 
 private: 
     Animation animation;
+
+    //Score 
+    int score;
         
     // Leveling stuff
     int level;
@@ -27,10 +30,20 @@ private:
     // Movement
     int facingRow; // 0 = Player facing left // 1 = Player facing right
     float movement_cooldown;
+    float movementBlocked_cooldown;
     float shot_cooldown;
     bool isMoving;
+    bool movementBlocked;
     int speed;
     int speedThreshold;
+    int overrideStartFrame;
+    int overrideEndFrame;
+
+    // Sound stuff
+    sf::SoundBuffer shootBuffer;
+    sf::Sound shootSound;
+    sf::SoundBuffer deathBuffer;
+    sf::Sound deathSound;
 
     // Combat stuff
     int hp;
@@ -61,6 +74,9 @@ public:
     void takeDamage(int amount);
     void healHp(int amount);
 
+    // Allows objects to change animation
+    void setAnimation(float dt, int startFrame, int endFrame, float totalDuration, float frameDuration);
+
     // Upgrading stuff
     void upgradeDamage(int amount);
     void upgradeReloadSpeed(float amount);
@@ -80,6 +96,8 @@ public:
     int getExperienceThreshold() const;
     int getSpeedThreshold() const;
     int getExperience() const;
+    int getScore() const;
+    int getLevel() const;
     bool checkIfDead() const;
     sf::FloatRect getBounds() const;
     sf::Vector2f getPosition() const; // Necessary for entities and camera to get position of the player

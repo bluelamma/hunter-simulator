@@ -173,7 +173,7 @@ void Stall::update(float dt, sf::RenderWindow &window) {
     if (isPlayerNear) {
         if (player->getSpeedThreshold() < 500.0f)  {
             std::stringstream ss;
-            ss << "'1' hp++ ($" << std::fixed << std::setprecision(2) << 10.0f << ")\n"
+            ss << "'1' hp++ ($" << std::fixed << std::setprecision(2) << 30.0f << ")\n"
                << "'2' speedCap++ ($" << player->getNextCigarettesCost() << ")\n";
             promptText.setString(ss.str());
 
@@ -182,14 +182,16 @@ void Stall::update(float dt, sf::RenderWindow &window) {
             if (buyingCooldown <= 0.0f) {
                 // Health
                 if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Num1)) {
-                    if (player->spendCash(10.0f)) {
-                        player->healHp(100); 
+                    if (player->spendCash(30.0f)) {
+                        player->setAnimation(dt, 7, 8, 0.75f, 0.25f);
+                        player->healHp(200); 
                         buyingCooldown = 0.5f;
                     }
                 } 
                 // Speed
                 if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Num2)) {
                     if (player->spendCash(player->getNextCigarettesCost())) {
+                        player->setAnimation(dt, 4, 6, 1.8f, 0.6f);
                         player->raiseSpeedThreshold(50.0f); 
                         buyingCooldown = 0.5f;
                     }
@@ -197,7 +199,7 @@ void Stall::update(float dt, sf::RenderWindow &window) {
             }
         } else {
             std::stringstream ss;
-            ss << "'1' hp++ ($" << std::fixed << std::setprecision(2) << 10.0f << ")\n"
+            ss << "'1' hp++ ($" << std::fixed << std::setprecision(2) << 30.0f << ")\n"
                << "'[-]' speedCap++ (" << "[MAX]" << ")\n";
             promptText.setString(ss.str());
 
@@ -206,8 +208,9 @@ void Stall::update(float dt, sf::RenderWindow &window) {
             if (buyingCooldown <= 0.0f) {
                 // Health
                 if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Num1)) {
-                    if (player->spendCash(10.0f)) {
-                        player->healHp(100); 
+                    if (player->spendCash(30.0f)) {
+                        player->setAnimation(dt, 7, 8, 0.75f, 0.25f);
+                        player->healHp(200); 
                         buyingCooldown = 0.5f;
                     }
                 } 

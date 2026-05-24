@@ -2,6 +2,7 @@
 
 #include <SFML/Window.hpp>
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <iostream>
 #include <vector>
 #include <memory>
@@ -19,9 +20,9 @@ enum class LocationID {
     Shop
 };
 
-// Was necessary to split the files like I did and still make it work
 class Player;
 class TileMap;
+class TextDisplay;
 
 class Animation {
 private:
@@ -34,6 +35,7 @@ public:
     Animation(int frameWidth, int frameHeight, float holdTime);
 
     void update(int row, int startFrame, int endFrame, float dt, sf::Sprite &sprite);
+    void setFrameDuration(float newHoldTime);
 };
 
 class GameObject {
@@ -65,23 +67,14 @@ class Game {
 private:
     int tileSize = 64; // Used to make spawn point of things on specified tiles, load maps correctly
 
-    // --- Stuff for pausing the game and restarting ---
     bool isPaused;
-    sf::Font font;
-    sf::Text pauseText;
-    sf::Text restartText;
-    sf::RectangleShape pauseOverlay;
-    sf::RectangleShape restartOverlay;
-    // ----------------------------------
-
-    // Cash display
-    sf::Text cashText;
 
     sf::RenderWindow window;
     std::vector<std::unique_ptr<GameObject>> GameObjects;
 
     sf::View camera;
     std::unique_ptr<Player> player;
+    std::unique_ptr<TextDisplay> textDisplay;
     LocationID currentLocation; // Tracks which map is active
 
     void init();

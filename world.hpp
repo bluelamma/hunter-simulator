@@ -33,6 +33,7 @@ private:
     std::vector<int> mapData;
     std::vector<int> solidTiles; // Collisions with stuff
     std::vector<sf::FloatRect> solidBoxes; // Collisions with objects
+    std::vector<sf::FloatRect> spawnAreas;
     int mapWidth; // in tiles
     int mapHeight; // in tiles
     int tileSize;
@@ -45,7 +46,9 @@ public:
     TileMap(const std::string &textureFile, const std::string &csvFile, int width, int height, int tSize, std::vector<int> solids, int waterTile);
 
     void addSolidBox(const sf::FloatRect& box);
+    void addSpawnArea(const sf::FloatRect& box);
 
     void draw(sf::RenderWindow &window) override;
     bool isSolid(float pixelX, float pixelY, bool isProjectile) const; // for Checking if the player can walk on a specitic tile
+    bool isSpawn(float pixelX, float pixelY) const; // Everything can walk over the areas but creatures can't spawn
 };

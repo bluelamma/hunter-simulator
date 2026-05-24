@@ -22,7 +22,7 @@ protected:
     bool isAttacking;
     bool isDead;
     float deathTimer;
-
+    
 public:
     Creature(float startX, float startY, Player *player, float animWidth, float animHeight, float animHoldTime);
     virtual ~Creature() = default;
@@ -30,6 +30,7 @@ public:
     virtual void draw(sf::RenderWindow &window) override;
     virtual void takeDamage(int amount);
     virtual void update(float dt, sf::RenderWindow &window) override = 0; 
+    virtual void grantRewards(std::vector<std::unique_ptr<GameObject>>& newDrops) = 0;
 
     int getHp() const;
     float getDiff() const;
@@ -48,6 +49,7 @@ public:
     Hare(float startX, float startY, Player *player);
     
     void update(float dt, sf::RenderWindow &window) override;
+    void grantRewards(std::vector<std::unique_ptr<GameObject>>& newDrops) override;
 };
 
 class Boar : public Creature {
@@ -71,6 +73,7 @@ public:
     Boar(float startX, float startY, Player *player);
 
     void update(float dt, sf::RenderWindow &window) override;
+    void grantRewards(std::vector<std::unique_ptr<GameObject>>& newDrops) override;
 };
 
 class Bear : public Creature {
@@ -91,10 +94,13 @@ private:
     bool aggroed;
     bool boss;
 
+    sf::SoundBuffer bearBuffer;
+    sf::Sound bearSound;
 public:
     Bear(float startX, float startY, Player *player, bool boss);
 
     void update(float dt, sf::RenderWindow &window) override;
+    void grantRewards(std::vector<std::unique_ptr<GameObject>>& newDrops) override;
 
     bool checkIfBoss() const;
 };

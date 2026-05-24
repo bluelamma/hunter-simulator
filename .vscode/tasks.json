@@ -3,17 +3,19 @@
     "tasks": [
         {
             "type": "cppbuild",
-            "label": "C/C++: g++.exe build with SFML",
+            "label": "C/C++: g++.exe RELEASE build with SFML",
             "command": "C:\\msys64\\ucrt64\\bin\\g++.exe",
             "args": [
                 "-fdiagnostics-color=always",
-                "-g",
+                "-O3",
+                "-mwindows",
                 "${fileDirname}\\*.cpp",
                 "-o",
                 "${fileDirname}\\${fileBasenameNoExtension}.exe",
                 "-lsfml-graphics",
                 "-lsfml-window",
-                "-lsfml-system"
+                "-lsfml-system",
+                "-lsfml-audio"
             ],
             "options": {
                 "cwd": "C:\\msys64\\ucrt64\\bin"

@@ -1,6 +1,7 @@
 #include "entities.hpp"
 #include "world.hpp"
 #include "player.hpp"
+#include "pickup.hpp"
 
 // -----------------------
 // ------ Creature -------
@@ -26,6 +27,8 @@ float Creature::getDiff() const { return difference; }
 float Creature::getDeathTimer() const { return deathTimer; }
 bool Creature::checkIfDead() const { return isDead; }
 sf::FloatRect Creature::getBounds() const { return hitbox.getGlobalBounds(); }
+
+
 
 // ----------------------
 // -------- Hare --------
@@ -196,7 +199,7 @@ void Hare::update(float dt, sf::RenderWindow &window) {
             endFrame = 0;
         }
     } else {
-        // Death animation // lets say 
+        // Death animation
         startFrame = 2;
         endFrame = 2;
         deathTimer += dt;
@@ -217,6 +220,11 @@ void Hare::update(float dt, sf::RenderWindow &window) {
     hitbox.setPosition(sf::Vector2f(harePos.x + 0.0f, harePos.y + 0.0f));
     // Animation::update(int row, int startFrame, int endFrame, float dt, sf::Sprite &sprite);
     animation.update(facingRow, startFrame, endFrame, dt, sprite);
+}
+
+void Hare::grantRewards(std::vector<std::unique_ptr<GameObject>>& newDrops) {
+    player->addExperience(50 * difference); 
+    player->addCash(6.0f * difference);
 }
 
 // ----------------------
@@ -319,7 +327,7 @@ void Boar::update(float dt, sf::RenderWindow &window) {
                 float diffX = playerPos.x - boarPos.x;
                 float diffY = playerPos.y - boarPos.y;
                 float distanceToPlayer = std::sqrt(diffX * diffX + diffY * diffY);
-                float updatedRadius = player->isAttacking() ? aggroRadius * 2.0f : aggroRadius;
+                float updatedRadius = player->isAttacking() ? aggroRadius * 1.75f : aggroRadius;
 
                 if (!player->checkIfDead() && distanceToPlayer < updatedRadius) {
                     // Player is in range: stays aggroed and keeps resetting the chase timer
@@ -481,13 +489,25 @@ void Boar::update(float dt, sf::RenderWindow &window) {
     animation.update(facingRow, startFrame, endFrame, dt, sprite);
 }
 
+void Boar::grantRewards(std::vector<std::unique_ptr<GameObject>>& newDrops) {
+    player->addExperience(100 * difference); 
+    player->addCash(25.0f * difference);
+
+    if(rand() % 5 <= 1) {
+        sf::FloatRect bounds = getBounds();
+        auto meat = std::make_unique<RawMeat>(bounds.position.x, bounds.position.y, player, difference);
+        meat->setSpriteScale(sf::Vector2f{0.5f * difference, 0.5f * difference});
+        newDrops.push_back(std::move(meat));
+    }
+}
+
 // ----------------------
 // -------- Bear --------
 // ----------------------
 Bear::Bear(float startX, float startY, Player *player, bool boss) 
     : Creature(startX, startY, player, 63.0f, 40.0f, 0.35f), // size of the sprite
       moveTimer(0.0f), moveInterval(1.0f), bounceTimer(0.0f), attackTimer(1.5f), 
-      turningLocked(false), idleTimer(0.0f), pursuitTimer(0.0f), aggroed(false), boss(boss) {
+      turningLocked(false), idleTimer(0.0f), pursuitTimer(0.0f), aggroed(false), boss(boss), bearSound(bearBuffer) {
     
     if (!boss) {
         if (!texture.loadFromFile("textures/bear.png")) {
@@ -496,7 +516,7 @@ Bear::Bear(float startX, float startY, Player *player, bool boss)
             sprite.setTexture(texture, true); 
         }
 
-            hp = rand() % 1000 + 1000;
+            hp = rand() % 1500 + 500;
             maxHp = hp;
             difference = maxHp / 500.0f;
             attackDamage = 90 * difference;
@@ -513,12 +533,16 @@ Bear::Bear(float startX, float startY, Player *player, bool boss)
             attackDamage = 100 * difference;
     }
 
+    if (bearBuffer.loadFromFile("sounds/bearSound.mp3")) {
+        bearSound.setBuffer(bearBuffer);
+    }
+
     deathTimer = 0.0f;
     sf::Vector2f bearPos = sprite.getPosition();
     
     attackCooldown = 1.5f;
     speed = 45.0f; 
-    aggroRadius = 300.0f;
+    aggroRadius = 275.0f;
 
     hitbox.setSize(sf::Vector2f(48.0f * difference, 32.0f * difference));
     hitbox.setFillColor(sf::Color(255, 0, 0, 0));
@@ -535,7 +559,7 @@ void Bear::update(float dt, sf::RenderWindow &window) {
     sf::Vector2f playerPos = player->getPosition();
 
     if (!isDead) {
-        // attackTimer acts as both the cooldown tracker and animation timer.
+        // attackTimer acts as both the cooldown tracker and animation timer
         attackTimer += dt;
         
         // Play attack animation for 0.5s after an attack triggers
@@ -553,9 +577,13 @@ void Bear::update(float dt, sf::RenderWindow &window) {
             float distanceToPlayer = std::sqrt(diffX * diffX + diffY * diffY);
             float updatedRadius = player->isAttacking() ? aggroRadius * 2.0f : aggroRadius;
 
-            if (!player->checkIfDead() && distanceToPlayer < updatedRadius) {
+            if ((!player->checkIfDead() && distanceToPlayer < updatedRadius) || hp != maxHp) {
+                if (!aggroed) {
+                    bearSound.play(); 
+                }
+                
                 aggroed = true;
-                pursuitTimer = 4.0f; 
+                pursuitTimer = 4.0f;
             } else if (aggroed) {
                 pursuitTimer -= dt;
                 if (pursuitTimer <= 0.0f) {
@@ -674,6 +702,21 @@ void Bear::update(float dt, sf::RenderWindow &window) {
     }
 
     animation.update(facingRow, startFrame, endFrame, dt, sprite);
+}
+
+void Bear::grantRewards(std::vector<std::unique_ptr<GameObject>>& newDrops) {
+    if (boss) {
+        player->addExperience(3000 * difference); 
+            player->addCash(2500.0f * difference);
+        } else {
+            player->addExperience(500 * difference); 
+            player->addCash(250.0f * difference);
+        }
+
+        sf::FloatRect bounds = getBounds();
+        auto meat = std::make_unique<RawMeat>(bounds.position.x, bounds.position.y, player, difference);
+        meat->setSpriteScale(sf::Vector2f{0.5f * difference, 0.5f * difference});
+        newDrops.push_back(std::move(meat));
 }
 
 bool Bear::checkIfBoss() const { return boss; }
