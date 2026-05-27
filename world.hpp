@@ -3,6 +3,7 @@
 #include <string>
 #include <fstream>
 #include <sstream>
+#include <unordered_map>
 
 #include "game.hpp"
 #include "entities.hpp"
@@ -22,8 +23,10 @@ public:
     static void saveCaveState();
 
     static void spawnHare(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, sf::FloatRect spawnArea, int entityCount);
-    static void spawnBoar(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, sf::FloatRect spawnArea, int entityCount);
+    static void spawnBoar(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, sf::FloatRect spawnArea, int entityCount, int variant);
     static void spawnBear(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, sf::FloatRect spawnArea, int entityCount);
+
+    static void spawnScenery(std::vector<std::unique_ptr<GameObject>> &gameObjects, sf::FloatRect spawnArea, int entityCount, const std::vector<std::string> &texturePaths);
 };
 
 
@@ -39,16 +42,29 @@ private:
     int tileSize;
     int tilesetColumns; // Number of columns in the png
     int waterTile;
+    std::vector<int> noSceneryTiles;
 
     sf::VertexArray tile_vertices;
 
 public:
-    TileMap(const std::string &textureFile, const std::string &csvFile, int width, int height, int tSize, std::vector<int> solids, int waterTile);
+    TileMap(const std::string &textureFile, const std::string &csvFile, int width, int height, int tSize, std::vector<int> solids, int waterTile, std::vector<int> noSceneryTiles);
 
     void addSolidBox(const sf::FloatRect& box);
     void addSpawnArea(const sf::FloatRect& box);
 
     void draw(sf::RenderWindow &window) override;
-    bool isSolid(float pixelX, float pixelY, bool isProjectile) const; // for Checking if the player can walk on a specitic tile
+    bool isSolid(float pixelX, float pixelY, bool isProjectile, bool isScenery) const; // for Checking if the player can walk on a specitic tile
     bool isSpawn(float pixelX, float pixelY) const; // Everything can walk over the areas but creatures can't spawn
+};
+
+class Scenery : public GameObject {
+private:
+    // Stores textures
+    static std::unordered_map<std::string, sf::Texture> textureCache;
+
+public:
+    Scenery(float startX, float startY, const std::string &texturePath);
+    
+    void draw(sf::RenderWindow &window) override;
+    void update(float dt, sf::RenderWindow &window) override;
 };

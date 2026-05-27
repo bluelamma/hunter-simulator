@@ -35,7 +35,6 @@ private:
     bool isMoving;
     bool movementBlocked;
     int speed;
-    int speedThreshold;
     int overrideStartFrame;
     int overrideEndFrame;
 
@@ -81,7 +80,7 @@ public:
     void upgradeDamage(int amount);
     void upgradeReloadSpeed(float amount);
     void upgradeBulletVelocity(float amount);
-    void raiseSpeedThreshold(int amount);
+    void raiseSpeed(int amount);
 
     // Getters
     bool isAttacking() const;
@@ -94,7 +93,7 @@ public:
     int getHp() const;
     int getMaxHp() const;
     int getExperienceThreshold() const;
-    int getSpeedThreshold() const;
+    int getSpeed() const;
     int getExperience() const;
     int getScore() const;
     int getLevel() const;

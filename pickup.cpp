@@ -20,6 +20,9 @@ RawMeat::RawMeat(float startX, float startY, Player *player, float multiplier)
         sprite.setTexture(texture, true); 
     }
 
+
+    sprite.setRotation(sf::degrees(rand() % 360));
+
     healingValue = 60 * multiplier;
     sellingValue = 5.0f * multiplier;
 }

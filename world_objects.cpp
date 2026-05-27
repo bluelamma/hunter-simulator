@@ -87,34 +87,61 @@ void UpgradeStation::update(float dt, sf::RenderWindow &window) {
     isPlayerNear = hitbox.getGlobalBounds().contains({playerCenterX, playerCenterY});
 
     if (isPlayerNear) {
-        std::stringstream ss;
-        ss << "'1' damage++ ($" << std::fixed << std::setprecision(2) << player->getNextDamageCost() << ")\n"
-           << "'2' reloadSpeed-- ($" << player->getNextReloadCost() << ")\n"
-           << "'3' bulletSpeed++ ($" << player->getNextVelocityCost() << ")";
-        promptText.setString(ss.str());
+        if (player->getNextReloadCost() < 3000.0f) {
+            std::stringstream ss;
+            ss << "'1' damage++ ($" << std::fixed << std::setprecision(2) << player->getNextDamageCost() << ")\n"
+               << "'2' reloadSpeed-- ($" << player->getNextReloadCost() << ")\n"
+               << "'3' bulletSpeed++ ($" << player->getNextVelocityCost() << ")";
+            promptText.setString(ss.str());
         
-        promptText.setPosition(sf::Vector2f({hitbox.getPosition().x, hitbox.getPosition().y - 60.0f}));
+            promptText.setPosition(sf::Vector2f({hitbox.getPosition().x, hitbox.getPosition().y - 60.0f}));
 
-        if (upgradeCooldown <= 0.0f) {
-            // Damage
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Num1)) {
-                if (player->spendCash(player->getNextDamageCost())) {
-                    player->upgradeDamage(10.0f); 
-                    upgradeCooldown = 0.5f;
+            if (upgradeCooldown <= 0.0f) {
+                // Damage
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Num1)) {
+                    if (player->spendCash(player->getNextDamageCost())) {
+                        player->upgradeDamage(10.0f); 
+                        upgradeCooldown = 0.5f;
+                    }
+                } 
+                // ReloadSpeed
+                else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Num2)) {
+                    if (player->spendCash(player->getNextReloadCost())) {
+                        player->upgradeReloadSpeed(0.05f); // 0.05 seconds faster
+                        upgradeCooldown = 0.5f;
+                    }
+                } 
+                // BulletVelocity
+                else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Num3)) {
+                    if (player->spendCash(player->getNextVelocityCost())) {
+                        player->upgradeBulletVelocity(100.0f); // 100 pixels faster
+                        upgradeCooldown = 0.5f;
+                    }
                 }
-            } 
-            // ReloadSpeed
-            else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Num2)) {
-                if (player->spendCash(player->getNextReloadCost())) {
-                    player->upgradeReloadSpeed(0.05f); // 0.05 seconds faster
-                    upgradeCooldown = 0.5f;
-                }
-            } 
-            // BulletVelocity
-            else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Num3)) {
-                if (player->spendCash(player->getNextVelocityCost())) {
-                    player->upgradeBulletVelocity(100.0f); // 100 speed units faster
-                    upgradeCooldown = 0.5f;
+            }
+        } else {
+            std::stringstream ss;
+            ss << "'1' damage++ ($" << std::fixed << std::setprecision(2) << player->getNextDamageCost() << ")\n"
+               << "'[-]' reloadSpeed-- ([Max])\n"
+               << "'3' bulletSpeed++ ($" << player->getNextVelocityCost() << ")";
+            promptText.setString(ss.str());
+        
+            promptText.setPosition(sf::Vector2f({hitbox.getPosition().x, hitbox.getPosition().y - 60.0f}));
+
+            if (upgradeCooldown <= 0.0f) {
+                // Damage
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Num1)) {
+                    if (player->spendCash(player->getNextDamageCost())) {
+                        player->upgradeDamage(10.0f); 
+                        upgradeCooldown = 0.5f;
+                    }
+                } 
+                // BulletVelocity
+                else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Num3)) {
+                    if (player->spendCash(player->getNextVelocityCost())) {
+                        player->upgradeBulletVelocity(100.0f); // 100 pixels faster
+                        upgradeCooldown = 0.5f;
+                    }
                 }
             }
         }
@@ -171,10 +198,10 @@ void Stall::update(float dt, sf::RenderWindow &window) {
     isPlayerNear = hitbox.getGlobalBounds().contains({playerCenterX, playerCenterY});
 
     if (isPlayerNear) {
-        if (player->getSpeedThreshold() < 500.0f)  {
+        if (player->getSpeed() < 300.0f)  {
             std::stringstream ss;
-            ss << "'1' hp++ ($" << std::fixed << std::setprecision(2) << 30.0f << ")\n"
-               << "'2' speedCap++ ($" << player->getNextCigarettesCost() << ")\n";
+            ss << "'1' heal ($" << std::fixed << std::setprecision(2) << 30.0f << ")\n"
+               << "'2' speed++ ($" << player->getNextCigarettesCost() << ")\n";
             promptText.setString(ss.str());
 
             promptText.setPosition(sf::Vector2f({hitbox.getPosition().x, hitbox.getPosition().y - 60.0f}));
@@ -192,15 +219,15 @@ void Stall::update(float dt, sf::RenderWindow &window) {
                 if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Num2)) {
                     if (player->spendCash(player->getNextCigarettesCost())) {
                         player->setAnimation(dt, 4, 6, 1.8f, 0.6f);
-                        player->raiseSpeedThreshold(50.0f); 
+                        player->raiseSpeed(25.0f); 
                         buyingCooldown = 0.5f;
                     }
                 } 
             }
         } else {
             std::stringstream ss;
-            ss << "'1' hp++ ($" << std::fixed << std::setprecision(2) << 30.0f << ")\n"
-               << "'[-]' speedCap++ (" << "[MAX]" << ")\n";
+            ss << "'1' heal ($" << std::fixed << std::setprecision(2) << 30.0f << ")\n"
+               << "'[-]' speed++ (" << "[MAX]" << ")\n";
             promptText.setString(ss.str());
 
             promptText.setPosition(sf::Vector2f({hitbox.getPosition().x, hitbox.getPosition().y - 60.0f}));

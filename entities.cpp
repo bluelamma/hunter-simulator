@@ -35,7 +35,7 @@ sf::FloatRect Creature::getBounds() const { return hitbox.getGlobalBounds(); }
 // ----------------------
 Hare::Hare(float startX, float startY, Player *player) 
     : Creature(startX, startY, player, 46.0f, 36.0f, 0.15f), 
-      moveTimer(0.0f), moveInterval(0.0f), panicTimer(0.0f), bounceTimer(0.0f) {
+      moveTimer(0.0f), moveInterval(0.0f), panicTimer(0.0f), bounceTimer(0.0f), chargeTimer(0.0), regenTimer(5.0f), directionCalculated(false) {
     
     if (!texture.loadFromFile("textures/Hare.png")) {
         std::cerr << "Couldn't load hare texture \n";
@@ -46,7 +46,7 @@ Hare::Hare(float startX, float startY, Player *player)
     deathTimer = 0.0f;
     sf::Vector2f harePos = sprite.getPosition();
     
-    if (rand() % 20 <= 1) {
+    if (rand() % 10 < 1) {
         hp = rand() % 50 + 40;
     } else {
         hp = rand() % 30 + 30;
@@ -72,6 +72,14 @@ void Hare::update(float dt, sf::RenderWindow &window) {
     sf::Vector2f playerPos = player->getPosition();
 
     if(!isDead) {
+        if(hp != maxHp && hp > maxHp * 0.3f) {
+            regenTimer -= dt;
+            if (regenTimer < 0.0f) {
+                hp = maxHp;
+                regenTimer = 5.0f;
+            }
+        }
+
         // Distance between hare and the player
         float dx = harePos.x - playerPos.x;
         float dy = harePos.y - playerPos.y;
@@ -83,10 +91,32 @@ void Hare::update(float dt, sf::RenderWindow &window) {
         // Updates timers
         if (panicTimer > 0.0f) panicTimer -= dt;
         if (bounceTimer > 0.0f) bounceTimer -= dt; 
+        if (chargeTimer > 0.0f) chargeTimer -= dt;
 
-        if (isFleeing) {  
-            bounceTimer = 0.0f; // Cancels bounce if panicking so it can run away properly
+        if(chargeTimer > 0.0f) {
+            // Direction towards the player
+            if(!directionCalculated) {
+                directionCalculated = true;
+                sf::Vector2f dir(-dx, -dy); 
+                float length = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+            
+                if (length != 0.0f) {
+                    dir.x /= length;
+                    dir.y /= length;
+                }
 
+                // Slightly faster than normal fleeing
+                velocity = dir * (speed * 8.0f); 
+            }
+
+            if (velocity.x < 0) facingRow = 0; 
+            else if (velocity.x > 0) facingRow = 1; 
+
+            endFrame = 1;
+            moveTimer = 0.0f;
+        } else if (isFleeing || (hp != maxHp && bounceTimer <= 0.0f)) {  
+            if (isFleeing) bounceTimer = 0.0f;
+            
             sf::Vector2f dir(dx, dy); 
             float length = std::sqrt(dir.x * dir.x + dir.y * dir.y);
             if (length != 0.0f) {
@@ -94,7 +124,7 @@ void Hare::update(float dt, sf::RenderWindow &window) {
                 dir.y /= length;
             }
 
-            if (hp <= maxHp * 0.3) {
+            if (hp <= maxHp * 0.3f) {
                 velocity = dir * (speed * 0.5f);
             } else {
                 velocity = dir * (speed * 6.0f);
@@ -105,12 +135,10 @@ void Hare::update(float dt, sf::RenderWindow &window) {
 
             endFrame = 1;
             moveTimer = 0.0f;
-        } 
-        else if (bounceTimer > 0.0f) {
+        } else if (bounceTimer > 0.0f) {
             // DVD state
             endFrame = 1;
-        } 
-        else {
+        } else {
             // Wandering state
             moveTimer += dt;
 
@@ -143,6 +171,7 @@ void Hare::update(float dt, sf::RenderWindow &window) {
             isMoving = true;
         } 
 
+        // Apply movement
         if (isMoving) {
             sf::Vector2f currentPos = sprite.getPosition();
             sf::Vector2f nextPos = currentPos + (velocity * dt);
@@ -160,14 +189,14 @@ void Hare::update(float dt, sf::RenderWindow &window) {
                 float feetY = nextPos.y + offsetY;
 
                 // Collision check
-                if (!GameObject::world->isSolid(feetX, feetY, false)) {
+                if (!GameObject::world->isSolid(feetX, feetY, false, false)) {
                     sprite.setPosition(nextPos);
                 } else {
                     if (!isFleeing) {
                         bounceTimer = 1.5f; // Enter bounce state to prevent getting stuck on water
 
-                        bool hitHorizontal = GameObject::world->isSolid(feetX, currentPos.y + offsetY, false);
-                        bool hitVertical = GameObject::world->isSolid(currentPos.x + offsetX, feetY, false);
+                        bool hitHorizontal = GameObject::world->isSolid(feetX, currentPos.y + offsetY, false, false);
+                        bool hitVertical = GameObject::world->isSolid(currentPos.x + offsetX, feetY, false, false);
 
                         if (hitHorizontal) velocity.x *= -1.0f; 
                         if (hitVertical) velocity.y *= -1.0f;   
@@ -183,12 +212,14 @@ void Hare::update(float dt, sf::RenderWindow &window) {
 
                         if (velocity.x < 0) facingRow = 0;
                         else if (velocity.x > 0) facingRow = 1;
-
                     } else {
-                        if (!GameObject::world->isSolid(currentPos.x + offsetX, feetY, false)) {
+                        if (!GameObject::world->isSolid(currentPos.x + offsetX, feetY, false, false)) {
                             sprite.setPosition({currentPos.x, nextPos.y});
-                        } else if (!GameObject::world->isSolid(feetX, currentPos.y + offsetY, false)) {
+                        } else if (!GameObject::world->isSolid(feetX, currentPos.y + offsetY, false, false)) {
                             sprite.setPosition({nextPos.x, currentPos.y});
+                        } else if(isFleeing && hp > maxHp * 0.3f) {
+                            chargeTimer = 2.0f;
+                            directionCalculated = false;
                         } else {
                             endFrame = 0;
                         }
@@ -230,13 +261,21 @@ void Hare::grantRewards(std::vector<std::unique_ptr<GameObject>>& newDrops) {
 // ----------------------
 // -------- Boar --------
 // ----------------------
-Boar::Boar(float startX, float startY, Player *player) 
+Boar::Boar(float startX, float startY, Player *player, int variant) 
     : Creature(startX, startY, player, 45.0f, 28.0f, 0.25f), moveTimer(0.0f), moveInterval(0.75f), 
-    bounceTimer(0.0f), attackTimer(1.0f), turningLocked(false), idleTimer(0.0f), pursuitTimer(0.0f) {
-    if (!texture.loadFromFile("textures/boar.png")) {
-        std::cerr << "Couldn't load boar texture \n";
-    } else {
-        sprite.setTexture(texture, true); 
+    bounceTimer(0.0f), attackTimer(1.0f), turningLocked(false), idleTimer(0.0f), pursuitTimer(0.0f), variant(variant) {
+    if(variant == 0) {
+        if (!texture.loadFromFile("textures/boar.png")) {
+            std::cerr << "Couldn't load boar texture \n";
+        } else {
+            sprite.setTexture(texture, true); 
+        }
+    } else if (variant == 1) {
+        if (!texture.loadFromFile("textures/boar_black.png")) {
+            std::cerr << "Couldn't load boar_black texture \n";
+        } else {
+            sprite.setTexture(texture, true); 
+        }
     }
 
     deathTimer = 0.0f;
@@ -270,6 +309,13 @@ Boar::Boar(float startX, float startY, Player *player)
     }
 
     attackDamage = 50 * difference;
+
+    if(variant == 1) {
+        maxHp *= 1.5;
+        hp *= 1.5;
+        attackDamage *= 1.25;
+    }
+
     aggroRadius = 150.0f + static_cast<float>(rand() % 200);
 
     hitbox.setSize(sf::Vector2f(32.0f * difference, 18.0f * difference));
@@ -401,18 +447,18 @@ void Boar::update(float dt, sf::RenderWindow &window) {
                     float feetY = nextPos.y + offsetY;
 
                     // Try normal movement
-                    if (!GameObject::world->isSolid(feetX, feetY, false)) {
+                    if (!GameObject::world->isSolid(feetX, feetY, false, false)) {
                         sprite.setPosition(nextPos);
                     } else {
                         bool slid = false;
 
                         // Try moving horizontally
-                        if (!GameObject::world->isSolid(nextPos.x + offsetX, currentPos.y + offsetY, false)) {
+                        if (!GameObject::world->isSolid(nextPos.x + offsetX, currentPos.y + offsetY, false, false)) {
                             sprite.setPosition({nextPos.x, currentPos.y});
                             slid = true;
                         } 
                         // Try moving vertically 
-                        else if (!GameObject::world->isSolid(currentPos.x + offsetX, nextPos.y + offsetY, false)) {
+                        else if (!GameObject::world->isSolid(currentPos.x + offsetX, nextPos.y + offsetY, false, false)) {
                             sprite.setPosition({currentPos.x, nextPos.y});
                             slid = true;
                         }
@@ -421,8 +467,8 @@ void Boar::update(float dt, sf::RenderWindow &window) {
                         if (!aggroed) {
                             bounceTimer = 1.5f; 
 
-                            bool hitHorizontal = GameObject::world->isSolid(feetX, currentPos.y + offsetY, false);
-                            bool hitVertical = GameObject::world->isSolid(currentPos.x + offsetX, feetY, false);
+                            bool hitHorizontal = GameObject::world->isSolid(feetX, currentPos.y + offsetY, false, false);
+                            bool hitVertical = GameObject::world->isSolid(currentPos.x + offsetX, feetY, false, false);
 
                             if (hitHorizontal) velocity.x *= -1.0f; 
                             if (hitVertical) velocity.y *= -1.0f;   
@@ -490,8 +536,13 @@ void Boar::update(float dt, sf::RenderWindow &window) {
 }
 
 void Boar::grantRewards(std::vector<std::unique_ptr<GameObject>>& newDrops) {
-    player->addExperience(100 * difference); 
-    player->addCash(25.0f * difference);
+    if (variant == 0) {
+        player->addExperience(100 * difference); 
+        player->addCash(25.0f * difference);
+    } else if (variant == 1) {
+        player->addExperience(150 * difference); 
+        player->addCash(40.0f * difference);
+    }
 
     if(rand() % 5 <= 1) {
         sf::FloatRect bounds = getBounds();
@@ -516,10 +567,10 @@ Bear::Bear(float startX, float startY, Player *player, bool boss)
             sprite.setTexture(texture, true); 
         }
 
-            hp = rand() % 1500 + 500;
+            hp = rand() % 1000 + 400;
             maxHp = hp;
-            difference = maxHp / 500.0f;
-            attackDamage = 90 * difference;
+            difference = maxHp / 300.0f;
+            attackDamage = 70 * difference;
     } else {
             if (!texture.loadFromFile("textures/bear_black.png")) {
                 std::cerr << "Couldn't load bear texture \n";
@@ -527,10 +578,10 @@ Bear::Bear(float startX, float startY, Player *player, bool boss)
             sprite.setTexture(texture, true); 
             }
 
-            hp = 3000;
+            hp = 2000;
             maxHp = hp;
-            difference = maxHp / 750.0f;
-            attackDamage = 100 * difference;
+            difference = maxHp / 450.0f;
+            attackDamage = 80 * difference;
     }
 
     if (bearBuffer.loadFromFile("sounds/bearSound.mp3")) {
@@ -562,7 +613,7 @@ void Bear::update(float dt, sf::RenderWindow &window) {
         // attackTimer acts as both the cooldown tracker and animation timer
         attackTimer += dt;
         
-        // Play attack animation for 0.5s after an attack triggers
+        // plays attack animation for 0.5s after an attack is triggered
         bool isAttackingAnim = (attackTimer < 0.5f);
 
         if (isAttackingAnim) {
@@ -592,7 +643,7 @@ void Bear::update(float dt, sf::RenderWindow &window) {
                 }
             }
 
-            // --- Roaming & Chasing Logic ---
+            // --- Roaming && Chasing Logic ---
             // Initialize a random starting direction if completely stationary
             if (velocity.x == 0.0f && velocity.y == 0.0f) {
                 float angle = static_cast<float>(rand() % 360) * 3.14159f / 180.0f;
@@ -638,12 +689,12 @@ void Bear::update(float dt, sf::RenderWindow &window) {
                 float feetX = nextPos.x + offsetX;
                 float feetY = nextPos.y + offsetY;
 
-                if (!GameObject::world->isSolid(feetX, feetY, false)) {
+                if (!GameObject::world->isSolid(feetX, feetY, false, false)) {
                     sprite.setPosition(nextPos);
                 } else {
                     // Bounce Logic - Inverts velocity based on which axis hit the wall
-                    bool hitHorizontal = GameObject::world->isSolid(feetX, currentPos.y + offsetY, false);
-                    bool hitVertical = GameObject::world->isSolid(currentPos.x + offsetX, feetY, false);
+                    bool hitHorizontal = GameObject::world->isSolid(feetX, currentPos.y + offsetY, false, false);
+                    bool hitVertical = GameObject::world->isSolid(currentPos.x + offsetX, feetY, false, false);
 
                     if (hitHorizontal) velocity.x *= -1.0f; 
                     if (hitVertical) velocity.y *= -1.0f;   
@@ -655,9 +706,9 @@ void Bear::update(float dt, sf::RenderWindow &window) {
                     }
 
                     // Sliding application so it doesn't get stuck visually
-                    if (!GameObject::world->isSolid(nextPos.x + offsetX, currentPos.y + offsetY, false)) {
+                    if (!GameObject::world->isSolid(nextPos.x + offsetX, currentPos.y + offsetY, false, false)) {
                         sprite.setPosition({nextPos.x, currentPos.y});
-                    } else if (!GameObject::world->isSolid(currentPos.x + offsetX, nextPos.y + offsetY, false)) {
+                    } else if (!GameObject::world->isSolid(currentPos.x + offsetX, nextPos.y + offsetY, false, false)) {
                         sprite.setPosition({currentPos.x, nextPos.y});
                     }
                 }
@@ -672,7 +723,7 @@ void Bear::update(float dt, sf::RenderWindow &window) {
             
             // If touching the player and cooldown is ready
             if (intersection.has_value() && attackTimer >= attackCooldown) {
-                player->takeDamage(attackDamage); // Instant damage
+                player->takeDamage(attackDamage);
                 attackTimer = 0.0f; // Resetting triggers the attack animation visually
             }
         }
@@ -709,8 +760,8 @@ void Bear::grantRewards(std::vector<std::unique_ptr<GameObject>>& newDrops) {
         player->addExperience(3000 * difference); 
             player->addCash(2500.0f * difference);
         } else {
-            player->addExperience(500 * difference); 
-            player->addCash(250.0f * difference);
+            player->addExperience(300 * difference); 
+            player->addCash(100.0f * difference);
         }
 
         sf::FloatRect bounds = getBounds();

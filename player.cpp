@@ -22,7 +22,7 @@ void Projectile::update(float dt, sf::RenderWindow &window) {
     // Collision with objects
     sf::Vector2f pos = shape.getPosition();
 
-    if (GameObject::world->isSolid(pos.x + radius, pos.y + radius, true)) {
+    if (GameObject::world->isSolid(pos.x + radius, pos.y + radius, true, false)) {
         active = false; 
     }
 }
@@ -53,7 +53,7 @@ Player::Player(float startX, float startY)
         deathSound.setBuffer(deathBuffer);
     }
 
-    speed = 2000.0f;
+    speed = 200.0f;
 
     movement_cooldown = 0.0f;
     movementBlocked_cooldown = 0.0f;
@@ -69,7 +69,7 @@ Player::Player(float startX, float startY)
     experience = 0;
     score = 0;
     experienceThreshold = 200;
-    speedThreshold = 200;
+    speed = 200;
     cash = 0.0f;
 
     base_shot_cooldown = 0.75f;
@@ -158,15 +158,15 @@ void Player::update(float dt, sf::RenderWindow &window) {
                     sf::Vector2f currentPos = sprite.getPosition();
 
                     // Movement without obstructions
-                    if (!GameObject::world->isSolid(feetX, feetY, false)) {
+                    if (!GameObject::world->isSolid(feetX, feetY, false, false)) {
                         sprite.setPosition(nextPos);
                     } else {
                         // Try moving to the side
-                        if (!GameObject::world->isSolid(nextPos.x + offsetX, currentPos.y + offsetY, false)) {
+                        if (!GameObject::world->isSolid(nextPos.x + offsetX, currentPos.y + offsetY, false, false)) {
                             sprite.setPosition({nextPos.x, currentPos.y});
                         } 
                         // Try moving up or down
-                        else if (!GameObject::world->isSolid(currentPos.x + offsetX, nextPos.y + offsetY, false)) {
+                        else if (!GameObject::world->isSolid(currentPos.x + offsetX, nextPos.y + offsetY, false, false)) {
                             sprite.setPosition({currentPos.x, nextPos.y});
                         } 
                         // Movement completely blocked
@@ -272,24 +272,12 @@ void Player::levelUp() {
     level += 1;
     experienceThreshold = 200 + level * 100;
 
-    if(200.0f + 10.0f * level >= speedThreshold) {
-        speed = speedThreshold;
-    } else if (200.0f + 10.0f * level < speedThreshold) {
-        speed = 200.0f + 10.0f * level;
-    }
-
-    maxHp = 100 + 10 * level;
-    hp += 10;
+    maxHp = 100 + 15 * level;
+    hp += 15;
 }
 
-void Player::raiseSpeedThreshold(int amount) {
-    speedThreshold += amount;
-    
-    if(200.0f + 10.0f * level >= speedThreshold) {
-        speed = speedThreshold;
-    } else if (200.0f + 10.0f * level < speedThreshold) {
-        speed = 200.0f + 10.0f * level;
-    }
+void Player::raiseSpeed(int amount) {
+    speed += amount;
 
     cigarettesCost += 100.0f;
 }
@@ -308,7 +296,7 @@ void Player::upgradeDamage(int amount) {
 }
 
 void Player::upgradeReloadSpeed(float amount) {
-    if (base_shot_cooldown > 0.25f) {
+    if (base_shot_cooldown > 0.15f) {
         base_shot_cooldown -= amount;
         nextReloadCost *= 1.5f;
     }
@@ -369,7 +357,7 @@ int Player::getMaxHp() const { return maxHp; }
 
 int Player::getExperienceThreshold() const { return experienceThreshold; }
 
-int Player::getSpeedThreshold() const { return speedThreshold; }
+int Player::getSpeed() const { return speed; }
 
 int Player::getExperience() const { return experience; }
 

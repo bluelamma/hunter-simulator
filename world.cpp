@@ -8,7 +8,7 @@
 void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint) {
 
     // Map
-    auto map = std::make_unique<TileMap>("maps/tiles_overworld.png", "maps/overworld.csv", 300, 150, tileSize, std::vector<int>{3}, 3);
+    auto map = std::make_unique<TileMap>("maps/tiles_overworld.png", "maps/overworld.csv", 300, 150, tileSize, std::vector<int>{3}, 3, std::vector<int>{2, 4, 5});
     TileMap* tileMap = map.get(); // Save a pointer so we can add collision boxes
     GameObject::world = map.get(); 
     gameObjects.emplace_back(std::move(map));
@@ -74,35 +74,37 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
     // Hares
     // sf::FloatRect({left_x, top_y}, {width, height})
     // Whole right side of the map
-    int numberOfEntities1 = rand() % 31 + 30; // 30 - 60;
     sf::FloatRect hareSpawnpoint1({tileSize * 170.0f, tileSize * 30.0f}, {tileSize * 120.0f, tileSize * 150.0f});
-    spawnHare(gameObjects, player, hareSpawnpoint1, numberOfEntities1);
+    spawnHare(gameObjects, player, hareSpawnpoint1, rand() % 31 + 30);
 
     // Top, Left part of the map
-    int numberOfEntities2 = rand() % 11 + 10; // 10 - 20;
     sf::FloatRect hareSpawnpoint2({tileSize * 20.0f, tileSize * 20.0f}, {tileSize * 180.0f, tileSize * 40.0f});
-    spawnHare(gameObjects, player, hareSpawnpoint2, numberOfEntities2);
+    spawnHare(gameObjects, player, hareSpawnpoint2, rand() % 11 + 10);
 
     // Close to the spawn area
-    int numberOfEntities6 = rand() % 11 + 10; // 10 - 20;
     sf::FloatRect hareSpawnpoint3({tileSize * 170.0f, tileSize * 80.0f}, {tileSize * 120.0f, tileSize * 80.0f});
-    spawnHare(gameObjects, player, hareSpawnpoint3, numberOfEntities6);
+    spawnHare(gameObjects, player, hareSpawnpoint3, rand() % 11 + 10);
 
     // Boars
-    // Top, right part of the map
-    int numberOfEntities3 = rand() % 16 + 15; // 15 - 30;
-    sf::FloatRect boarSpawnpoint1({tileSize * 200.0f, tileSize * 10.0f}, {tileSize * 100.0f, tileSize * 75.0f});
-    spawnBoar(gameObjects, player, boarSpawnpoint1, numberOfEntities3);
+    // Right part of the map
+    sf::FloatRect boarSpawnpoint1({tileSize * 180.0f, tileSize * 10.0f}, {tileSize * 120.0f, tileSize * 150.0f});
+    spawnBoar(gameObjects, player, boarSpawnpoint1, rand() % 26 + 30, 0);
 
-    // Bottom, right part of the map
-    int numberOfEntities4 = rand() % 3 + 1; // 1 - 3;
+    // Right part of the map // bottom
     sf::FloatRect boarSpawnpoint2({tileSize * 170.0f, tileSize * 140.0f}, {tileSize * 100.0f, tileSize * 15.0f});
-    spawnBoar(gameObjects, player, boarSpawnpoint2, numberOfEntities4);
+    spawnBoar(gameObjects, player, boarSpawnpoint2, rand() % 3 + 1, 0);
+
+    // Black // right part // center
+    sf::FloatRect boarSpawnpoint5({tileSize * 200.0f, tileSize * 40.0f}, {tileSize * 60.0f, tileSize * 40.0f});
+    spawnBoar(gameObjects, player, boarSpawnpoint5, rand() % 3 + 2, 1);
 
     // Left part of the map
-    int numberOfEntities5 = rand() % 20 + 40; // 40 - 60;
-    sf::FloatRect boarSpawnpoint3({tileSize * 20.0f, tileSize * 20.0f}, {tileSize * 180.0f, tileSize * 100.0f});
-    spawnBoar(gameObjects, player, boarSpawnpoint3, numberOfEntities5);
+    sf::FloatRect boarSpawnpoint3({tileSize * 20.0f, tileSize * 20.0f}, {tileSize * 160.0f, tileSize * 100.0f});
+    spawnBoar(gameObjects, player, boarSpawnpoint3, rand() % 36 + 50, 0);
+
+    // Black // Left part of the map
+    sf::FloatRect boarSpawnpoint4({tileSize * 10.0f, tileSize * 20.0f}, {tileSize * 150.0f, tileSize * 100.0f});
+    spawnBoar(gameObjects, player, boarSpawnpoint4, rand() % 11 + 20, 1);
 
     // Bears
     // Left part of the map
@@ -112,6 +114,23 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
     // Right part of the map
     sf::FloatRect bearSpawnpoint2({tileSize * 180.0f, tileSize * 20.0f}, {tileSize * 120.0f, tileSize * 100.0f});
     spawnBear(gameObjects, player, bearSpawnpoint2, 2);
+
+    // --- Scenery ---
+
+    // Assets
+    std::vector<std::string> grassVariants = {
+        "grass/grass0.png", "grass/grass1.png", "grass/grass2.png",
+        "grass/grass3.png", "grass/grass4.png"
+    };
+    std::vector<std::string> bushVariants = {
+        "grass/bush0.png", "grass/bush1.png"
+    };
+    sf::FloatRect wholeMap({0.0f, 0.0f}, {tileSize * 300.0f, tileSize * 150.0f});
+    
+    // grass patches
+    spawnScenery(gameObjects, wholeMap, 300, grassVariants);
+    // bushes
+    spawnScenery(gameObjects, wholeMap, 50, bushVariants);
 }
 
 // Cave
@@ -121,7 +140,7 @@ Bear* MapLoader::activeBearBoss = nullptr;
 void MapLoader::loadCave(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint) {
 
     // Loads the 50x80 Cave map
-    auto map = std::make_unique<TileMap>("maps/tiles_cave.png", "maps/cave.csv", 50, 80, tileSize, std::vector<int>{1}, 1);
+    auto map = std::make_unique<TileMap>("maps/tiles_cave.png", "maps/cave.csv", 50, 80, tileSize, std::vector<int>{1}, 1, std::vector<int>{99});
     GameObject::world = map.get(); 
     gameObjects.emplace_back(std::move(map));
 
@@ -166,7 +185,7 @@ void MapLoader::loadCave(std::vector<std::unique_ptr<GameObject>> &gameObjects, 
 void MapLoader::loadHome(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint) {
 
     // Loads the 9x10 Home map
-    auto map = std::make_unique<TileMap>("maps/tiles_home.png", "maps/home.csv", 9, 10, tileSize, std::vector<int>{1, 2, 3, 4}, 99);
+    auto map = std::make_unique<TileMap>("maps/tiles_home.png", "maps/home.csv", 9, 10, tileSize, std::vector<int>{1, 2, 3, 4}, 99, std::vector<int>{99});
     GameObject::world = map.get(); 
     gameObjects.emplace_back(std::move(map));
 
@@ -205,7 +224,7 @@ void MapLoader::spawnHare(std::vector<std::unique_ptr<GameObject>> &gameObjects,
             spawnY = spawnArea.position.y + (randomY * spawnArea.size.y);
 
             // Ensures GameObject::world exists and the tile isn't solid
-            if (GameObject::world != nullptr && !GameObject::world->isSolid(spawnX, spawnY, false)) {
+            if (GameObject::world != nullptr && !GameObject::world->isSolid(spawnX, spawnY, false, false)) {
                 validSpotFound = true;
                 break; // If a good spot is found, exits the attempt loop
             }
@@ -219,7 +238,7 @@ void MapLoader::spawnHare(std::vector<std::unique_ptr<GameObject>> &gameObjects,
     }
 }
 
-void MapLoader::spawnBoar(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, sf::FloatRect spawnArea, int entityCount) {
+void MapLoader::spawnBoar(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, sf::FloatRect spawnArea, int entityCount, int variant) {
     for (int i = 0; i < entityCount; ++i) {
         float spawnX = 0.0f;
         float spawnY = 0.0f;
@@ -241,14 +260,14 @@ void MapLoader::spawnBoar(std::vector<std::unique_ptr<GameObject>> &gameObjects,
             float feetY = spawnY + offsetY;
 
             // Check if the spot is valid based on where the feet are
-            if (GameObject::world != nullptr && !GameObject::world->isSolid(feetX, feetY, false) && !GameObject::world->isSpawn(feetX, feetY)) {
+            if (GameObject::world != nullptr && !GameObject::world->isSolid(feetX, feetY, false, false) && !GameObject::world->isSpawn(feetX, feetY)) {
                 validSpotFound = true;
                 break; 
             }
         }
 
         if (validSpotFound) {
-            gameObjects.emplace_back(std::make_unique<Boar>(spawnX, spawnY, player));
+            gameObjects.emplace_back(std::make_unique<Boar>(spawnX, spawnY, player, variant));
         } else {
             std::cerr << "Couldn't find a valid spawn point for Boar in the designated area\n";
         }
@@ -277,7 +296,7 @@ void MapLoader::spawnBear(std::vector<std::unique_ptr<GameObject>> &gameObjects,
             float feetY = spawnY + offsetY;
 
             // Check if the spot is valid based on where the feet are
-            if (GameObject::world != nullptr && !GameObject::world->isSolid(feetX, feetY, false) && !GameObject::world->isSpawn(feetX, feetY)) {
+            if (GameObject::world != nullptr && !GameObject::world->isSolid(feetX, feetY, false, false) && !GameObject::world->isSpawn(feetX, feetY)) {
                 validSpotFound = true;
                 break; 
             }
@@ -291,14 +310,55 @@ void MapLoader::spawnBear(std::vector<std::unique_ptr<GameObject>> &gameObjects,
     }
 }
 
+void MapLoader::spawnScenery(std::vector<std::unique_ptr<GameObject>> &gameObjects, sf::FloatRect spawnArea, int entityCount, const std::vector<std::string> &texturePaths) {
+    if (texturePaths.empty()) return;
+
+    for (int i = 0; i < entityCount; ++i) {
+        float spawnX = 0.0f;
+        float spawnY = 0.0f;
+        bool validSpotFound = false;
+        int maxAttempts = 30; 
+
+        for (int attempt = 0; attempt < maxAttempts; ++attempt) {
+            // random number between 0 and 1
+            float randomX = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+            float randomY = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+
+            spawnX = spawnArea.position.x + (randomX * spawnArea.size.x) - 32.0f;
+            spawnY = spawnArea.position.y + (randomY * spawnArea.size.y) - 32.0f;
+
+            float size = 16.0f * 2.5f;
+
+            // Checks the bottom of the sprite
+            bool bottomLeftBad = GameObject::world->isSolid(spawnX, spawnY + size, false, true);
+            bool bottomRightBad = GameObject::world->isSolid(spawnX + size, spawnY + size, false, true);
+
+            if (GameObject::world != nullptr && !bottomLeftBad && !bottomRightBad) {
+                validSpotFound = true;
+                break;
+            }
+        }
+
+        if (validSpotFound) {
+            // Picks a random texture
+            std::string randomTexture = texturePaths[rand() % texturePaths.size()];
+            auto scenery = std::make_unique<Scenery>(spawnX, spawnY, randomTexture);
+            scenery->setSpriteScale(sf::Vector2f{2.5f, 2.5f});
+            gameObjects.emplace_back(std::move(scenery));
+        } else {
+            std::cerr << "Couldn't find a valid spawn point for Scenery\n";
+        }
+    }
+}
+
 
 
 
 // ----------------------
 // ------- TileMap ------
 // ----------------------
-TileMap::TileMap(const std::string &textureFile, const std::string &csvFile, int width, int height, int tSize, std::vector<int> solids, int waterTile) 
-    : GameObject(0, 0), mapWidth(width), mapHeight(height), tileSize(tSize), solidTiles(solids), waterTile(waterTile) {
+TileMap::TileMap(const std::string &textureFile, const std::string &csvFile, int width, int height, int tSize, std::vector<int> solids, int waterTile, std::vector<int> noSceneryTiles) 
+    : GameObject(0, 0), mapWidth(width), mapHeight(height), tileSize(tSize), solidTiles(solids), waterTile(waterTile), noSceneryTiles(noSceneryTiles) {
     // Loads the texture
     if (!texture.loadFromFile(textureFile)) {
         std::cerr << "Couldn't load the tileset\n";
@@ -393,8 +453,8 @@ void TileMap::addSpawnArea(const sf::FloatRect& area) {
     spawnAreas.push_back(area);
 }
 
-bool TileMap::isSolid(float pixelX, float pixelY, bool isProjectile) const {
-    // Checks custom solid boundary boxes for collision 
+bool TileMap::isSolid(float pixelX, float pixelY, bool isProjectile, bool isScenery) const {
+    // Checks custom boundary boxes for collision 
     for (const auto& box : solidBoxes) {
         if (box.contains(sf::Vector2f(pixelX, pixelY))) {
             return true;
@@ -416,6 +476,14 @@ bool TileMap::isSolid(float pixelX, float pixelY, bool isProjectile) const {
         return false;
     }
 
+    if(isScenery) {
+        for (auto blockedTile : noSceneryTiles) {
+            if (tileID == blockedTile) {
+                return true;
+            }
+        }
+    }
+
     return std::find(solidTiles.begin(), solidTiles.end(), tileID) != solidTiles.end();
 }
 
@@ -429,3 +497,29 @@ bool TileMap::isSpawn(float pixelX, float pixelY) const {
 
     return false;
 }
+
+// ----------------------
+// ------- Scenery ------
+// ----------------------
+std::unordered_map<std::string, sf::Texture> Scenery::textureCache;
+
+Scenery::Scenery(float startX, float startY, const std::string& texturePath) 
+    : GameObject(startX, startY) {
+    
+    // Checks if the texture isn't in the cache yet
+    if (textureCache.find(texturePath) == textureCache.end()) {
+        sf::Texture newTexture;
+        if (!newTexture.loadFromFile(texturePath)) {
+            std::cerr << "Couldn't load scenery texture: " << texturePath << "\n";
+        }
+        textureCache[texturePath] = newTexture; // Stores it for next time
+    }
+    
+    sprite.setTexture(textureCache[texturePath], true); 
+}
+
+void Scenery::draw(sf::RenderWindow &window) {
+    window.draw(sprite);
+}
+
+void Scenery::update(float dt, sf::RenderWindow &window) {}

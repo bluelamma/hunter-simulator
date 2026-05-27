@@ -45,6 +45,10 @@ private:
     float moveInterval;    
     float panicTimer;      
     float bounceTimer;
+    float chargeTimer;
+    float regenTimer;
+    
+    bool directionCalculated;
 public:
     Hare(float startX, float startY, Player *player);
     
@@ -54,6 +58,8 @@ public:
 
 class Boar : public Creature {
 private:
+    int variant;
+
     float moveTimer;       
     float moveInterval;       
     float bounceTimer;
@@ -70,7 +76,7 @@ private:
     float aggroCheckTimer;
     bool aggroed;
 public:
-    Boar(float startX, float startY, Player *player);
+    Boar(float startX, float startY, Player *player, int variant);
 
     void update(float dt, sf::RenderWindow &window) override;
     void grantRewards(std::vector<std::unique_ptr<GameObject>>& newDrops) override;
