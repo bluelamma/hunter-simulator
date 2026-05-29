@@ -14,7 +14,7 @@ Pickup::Pickup(float startX, float startY, Player *player)
 RawMeat::RawMeat(float startX, float startY, Player *player, float multiplier) 
     : Pickup(startX, startY, player), multiplier(multiplier) {
 
-    if (!texture.loadFromFile("textures/rawMeat.png")) {
+    if (!texture.loadFromFile("../assets/textures/rawMeat.png")) {
         std::cerr << "Couldn't load RawMeat texture \n";
     } else {
         sprite.setTexture(texture, true); 
