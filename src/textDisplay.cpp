@@ -1,7 +1,7 @@
-#include "textDisplay.hpp"
+#include "../include/textDisplay.hpp"
 
 TextDisplay::TextDisplay(Player *player) : player(player), pauseText(font), restartText(font), cashText(font) {
-    if (!font.openFromFile("fonts/pixelFont.ttf")) { 
+    if (!font.openFromFile("../assets/fonts/pixelFont.ttf")) { 
         std::cerr << "Failed to load the font\n";
     }
 

@@ -1,43 +1,10 @@
-#include "entities.hpp"
-#include "world.hpp"
-#include "player.hpp"
-#include "textDisplay.hpp"
-#include "pickup.hpp"
+#include "../include/entities.hpp"
+#include "../include/world.hpp"
+#include "../include/player.hpp"
+#include "../include/textDisplay.hpp"
+#include "../include/pickup.hpp"
 
 TileMap* GameObject::world = nullptr;
-
-// -----------------------
-// ------ Animation ------
-// -----------------------
-Animation::Animation(int frameWidth, int frameHeight, float holdTime) 
-    : frameWidth(frameWidth), frameHeight(frameHeight), holdTime(holdTime), timer(0.0f), currentFrame(0) {}
-
-void Animation::update(int row, int startFrame, int endFrame, float dt, sf::Sprite &sprite) {
-    if (currentFrame < startFrame || currentFrame > endFrame) {
-        currentFrame = startFrame;
-        timer = 0.0f;
-    }
-
-    timer += dt;
-
-    if (timer >= holdTime) {
-        timer -= holdTime;
-        currentFrame++;
-
-        if (currentFrame > endFrame) {
-            currentFrame = startFrame;
-        }
-    }
-
-    int left = frameWidth * currentFrame;
-    int top = frameHeight * row;
-
-    sprite.setTextureRect(sf::IntRect({left, top}, {frameWidth, frameHeight}));
-}
-
-void Animation::setFrameDuration(float newHoldTime) {
-    holdTime = newHoldTime;
-}
 
 // -----------------------
 // ----- Game object -----

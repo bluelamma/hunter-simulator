@@ -1,5 +1,5 @@
-#include "world.hpp"
-#include "world_objects.hpp"
+#include "../include/world.hpp"
+#include "../include/world_objects.hpp"
 
 // ----------------------
 // ------ MapLoader -----
@@ -8,7 +8,7 @@
 void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint) {
 
     // Map
-    auto map = std::make_unique<TileMap>("maps/tiles_overworld.png", "maps/overworld.csv", 300, 150, tileSize, std::vector<int>{3}, 3, std::vector<int>{2, 4, 5});
+    auto map = std::make_unique<TileMap>("../assets/maps/tiles_overworld.png", "../assets/maps/overworld.csv", 300, 150, tileSize, std::vector<int>{3}, 3, std::vector<int>{2, 4, 5});
     TileMap* tileMap = map.get(); // Save a pointer so we can add collision boxes
     GameObject::world = map.get(); 
     gameObjects.emplace_back(std::move(map));
@@ -17,7 +17,7 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
     // Cave
     auto cave = std::make_unique<SwitchLocation>(
         tileSize * 25, tileSize * 130, // Position of the object
-        "objects/cave.png", 
+        "../assets/objects/cave.png", 
         player, 
         LocationID::Cave, 
         sf::Vector2f({tileSize * 26.0f, tileSize * 78.0f}), // Player's spawnpoint after interacting
@@ -36,7 +36,7 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
     // Home
     auto home = std::make_unique<SwitchLocation>(        
         tileSize * 180 - 2.0f, tileSize * 109 + 24.0f, // Object's position
-        "objects/home.png", 
+        "../assets/objects/home.png", 
         player, 
         LocationID::Home, 
         sf::Vector2f({tileSize * 4.0f, tileSize * 8.0f}), // Player's spawnpoint after interacting
@@ -60,7 +60,7 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
     auto stall = std::make_unique<Stall>(        
         tileSize * 189 - 10.0f, tileSize * 110, // Object's position
         tileSize * 3 + 15.0f, tileSize * 3, // Size
-        "objects/stall.png",
+        "../assets/objects/stall.png",
         player
     );
     stall->setSpriteScale({4.0f, 4.0f});
@@ -119,11 +119,11 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
 
     // Assets
     std::vector<std::string> grassVariants = {
-        "grass/grass0.png", "grass/grass1.png", "grass/grass2.png",
-        "grass/grass3.png", "grass/grass4.png"
+        "../assets/grass/grass0.png", "../assets/grass/grass1.png", "../assets/grass/grass2.png",
+        "../assets/grass/grass3.png", "../assets/grass/grass4.png"
     };
     std::vector<std::string> bushVariants = {
-        "grass/bush0.png", "grass/bush1.png"
+        "../assets/grass/bush0.png", "../assets/grass/bush1.png"
     };
     sf::FloatRect wholeMap({0.0f, 0.0f}, {tileSize * 300.0f, tileSize * 150.0f});
     
@@ -140,7 +140,7 @@ Bear* MapLoader::activeBearBoss = nullptr;
 void MapLoader::loadCave(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint) {
 
     // Loads the 50x80 Cave map
-    auto map = std::make_unique<TileMap>("maps/tiles_cave.png", "maps/cave.csv", 50, 80, tileSize, std::vector<int>{1}, 1, std::vector<int>{99});
+    auto map = std::make_unique<TileMap>("../assets/maps/tiles_cave.png", "../assets/maps/cave.csv", 50, 80, tileSize, std::vector<int>{1}, 1, std::vector<int>{99});
     GameObject::world = map.get(); 
     gameObjects.emplace_back(std::move(map));
 
@@ -185,7 +185,7 @@ void MapLoader::loadCave(std::vector<std::unique_ptr<GameObject>> &gameObjects, 
 void MapLoader::loadHome(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint) {
 
     // Loads the 9x10 Home map
-    auto map = std::make_unique<TileMap>("maps/tiles_home.png", "maps/home.csv", 9, 10, tileSize, std::vector<int>{1, 2, 3, 4}, 99, std::vector<int>{99});
+    auto map = std::make_unique<TileMap>("../assets/maps/tiles_home.png", "../assets/maps/home.csv", 9, 10, tileSize, std::vector<int>{1, 2, 3, 4}, 99, std::vector<int>{99});
     GameObject::world = map.get(); 
     gameObjects.emplace_back(std::move(map));
 
@@ -197,7 +197,7 @@ void MapLoader::loadHome(std::vector<std::unique_ptr<GameObject>> &gameObjects, 
 
     gameObjects.emplace_back(std::make_unique<SwitchLocation>(
         tileSize * 4, tileSize * 9, // Spawn point of the object
-        "objects/home_exit.png",
+        "../assets/objects/home_exit.png",
         player, 
         LocationID::Overworld, 
         sf::Vector2f({tileSize * 182.0f, tileSize * 114.0f}), // Spawn point of the player after interaction
@@ -213,20 +213,27 @@ void MapLoader::spawnHare(std::vector<std::unique_ptr<GameObject>> &gameObjects,
         float spawnX = 0.0f;
         float spawnY = 0.0f;
         bool validSpotFound = false;
-        int maxAttempts = 30; // Prevents infinite loops if the area is completely solid
+        int maxAttempts = 30; 
+
+        // 0.5 width and full height of the sprite
+        float offsetX = 24.0f; 
+        float offsetY = 36.0f; 
 
         for (int attempt = 0; attempt < maxAttempts; ++attempt) {
-            // Generates random numbers within the rectangle
+            // Random numbers between 0 and 1
             float randomX = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
             float randomY = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
 
             spawnX = spawnArea.position.x + (randomX * spawnArea.size.x);
             spawnY = spawnArea.position.y + (randomY * spawnArea.size.y);
 
-            // Ensures GameObject::world exists and the tile isn't solid
-            if (GameObject::world != nullptr && !GameObject::world->isSolid(spawnX, spawnY, false, false)) {
+            float feetX = spawnX + offsetX;
+            float feetY = spawnY + offsetY;
+
+            // Checks position at the feet
+            if (GameObject::world != nullptr && !GameObject::world->isSolid(feetX, feetY, false, false)) {
                 validSpotFound = true;
-                break; // If a good spot is found, exits the attempt loop
+                break; 
             }
         }
 
@@ -245,8 +252,8 @@ void MapLoader::spawnBoar(std::vector<std::unique_ptr<GameObject>> &gameObjects,
         bool validSpotFound = false;
         int maxAttempts = 30; 
 
-        float offsetX = 16.0f; // ~~ half the boar's width
-        float offsetY = 32.0f; // ~~ half the boar's height
+        float offsetX = 23.0f; // ~~ half the boar's width
+        float offsetY = 28.0f; // ~~ boar's full height 
 
         for (int attempt = 0; attempt < maxAttempts; ++attempt) {
             float randomX = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
@@ -281,8 +288,8 @@ void MapLoader::spawnBear(std::vector<std::unique_ptr<GameObject>> &gameObjects,
         bool validSpotFound = false;
         int maxAttempts = 30; 
 
-        float offsetX = 25.0f; // ~~ half the bear's width
-        float offsetY = 20.0f; // ~~ half the bear's height
+        float offsetX = 31.5f; // ~~ half the bear's width
+        float offsetY = 40.0f; // bear's full height
 
         for (int attempt = 0; attempt < maxAttempts; ++attempt) {
             float randomX = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);

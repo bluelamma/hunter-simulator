@@ -6,17 +6,19 @@
             "label": "C/C++: g++.exe RELEASE build with SFML",
             "command": "C:\\msys64\\ucrt64\\bin\\g++.exe",
             "args": [
-                "-fdiagnostics-color=always",
-                "-O3",
-                "-mwindows",
-                "${fileDirname}\\*.cpp",
-                "-o",
-                "${fileDirname}\\${fileBasenameNoExtension}.exe",
-                "-lsfml-graphics",
-                "-lsfml-window",
-                "-lsfml-system",
-                "-lsfml-audio"
-            ],
+                    "-fdiagnostics-color=always",
+                    "-O3",
+                    "-mwindows",
+                    "-I${workspaceFolder}\\include",
+                    "${workspaceFolder}\\src\\*.cpp",
+                    "${workspaceFolder}\\src\\creatures\\*.cpp",
+                    "-o",
+                    "${workspaceFolder}\\bin\\main.exe",
+                    "-lsfml-graphics",
+                    "-lsfml-window",
+                    "-lsfml-system",
+                    "-lsfml-audio"
+                ],
             "options": {
                 "cwd": "C:\\msys64\\ucrt64\\bin"
             },

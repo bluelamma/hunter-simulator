@@ -1,5 +1,5 @@
-#include "player.hpp"
-#include "world.hpp"
+#include "../include/player.hpp"
+#include "../include/world.hpp"
 
 // -----------------------
 // ----- Projectile ------
@@ -39,21 +39,19 @@ Player::Player(float startX, float startY)
     : GameObject(startX, startY), animation(31, 41, 0.25f), facingRow(0), nextDamageCost(25.0f), 
     nextReloadCost(25.0f), nextVelocityCost(10.0f), cigarettesCost(50.0f), shootSound(shootBuffer), deathSound(deathBuffer) {
 
-    if (!texture.loadFromFile("textures/Player.png")) {
+    if (!texture.loadFromFile("../assets/textures/Player.png")) {
         std::cerr << "Couldn't load player texture \n";
     } else {
         sprite.setTexture(texture, true); 
         sprite.setTextureRect(sf::IntRect({0, 0}, {31, 41})); 
     }
 
-    if (shootBuffer.loadFromFile("sounds/shootingSound.mp3")) {
+    if (shootBuffer.loadFromFile("../assets/sounds/shootingSound.mp3")) {
         shootSound.setBuffer(shootBuffer);
     }
-    if (deathBuffer.loadFromFile("sounds/deathSound.mp3")) {
+    if (deathBuffer.loadFromFile("../assets/sounds/deathSound.mp3")) {
         deathSound.setBuffer(deathBuffer);
     }
-
-    speed = 200.0f;
 
     movement_cooldown = 0.0f;
     movementBlocked_cooldown = 0.0f;
@@ -69,7 +67,7 @@ Player::Player(float startX, float startY)
     experience = 0;
     score = 0;
     experienceThreshold = 200;
-    speed = 200;
+    speed = 2000;
     cash = 0.0f;
 
     base_shot_cooldown = 0.75f;

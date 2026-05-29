@@ -1,4 +1,4 @@
-#include "world_objects.hpp"
+#include "../include/world_objects.hpp"
 
 // ----------------------
 // --- SwitchLocation ---
@@ -22,7 +22,7 @@ SwitchLocation::SwitchLocation(float startX, float startY, const std::string& te
 
 void SwitchLocation::draw(sf::RenderWindow &window) {
     window.draw(sprite);
-    window.draw(entranceHitbox); // uncomment for easier checking if the thing aligns properly
+    window.draw(entranceHitbox);
 }
 
 void SwitchLocation::update(float dt, sf::RenderWindow &window) {
@@ -64,7 +64,7 @@ UpgradeStation::UpgradeStation(float startX, float startY, float width, float he
     hitbox.setPosition(sf::Vector2f({startX, startY}));
     hitbox.setFillColor(sf::Color(0, 0, 255, 0)); // set last one to 100 for debugging
     
-    if (!font.openFromFile("fonts/pixelFont.ttf")) {
+    if (!font.openFromFile("../assets/fonts/pixelFont.ttf")) {
         std::cerr << "Failed to load font for UpgradeStation\n";
     }
     
@@ -168,7 +168,7 @@ Stall::Stall(float startX, float startY, float width, float height, const std::s
 
     sprite.setPosition(sf::Vector2f({startX, startY}));
     
-    if (!font.openFromFile("fonts/pixelFont.ttf")) {
+    if (!font.openFromFile("../assets/fonts/pixelFont.ttf")) {
         std::cerr << "Failed to load font for the Stall\n";
     } 
     

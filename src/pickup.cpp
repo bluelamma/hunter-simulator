@@ -1,4 +1,4 @@
-#include "pickup.hpp"
+#include "../include/pickup.hpp"
 
 
 // -----------------------

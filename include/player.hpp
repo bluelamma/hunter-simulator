@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game.hpp"
+#include "animation.hpp"
 #include "entities.hpp"
 
 class Projectile : public GameObject {
