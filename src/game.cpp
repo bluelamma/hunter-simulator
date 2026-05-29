@@ -35,11 +35,13 @@ Game::Game()
 Game::~Game() = default;
 
 void Game::init() {
+    // Makes random random
     srand(static_cast<unsigned int>(time(nullptr)));
 
     isPaused = false;
+    isSettingsMenu = false;
     
-    // Start game at the home
+    // Start game at home
     player = std::make_unique<Player>(0.0f, 0.0f);
     textDisplay = std::make_unique<TextDisplay>(player.get());
     loadLocation(LocationID::Home, sf::Vector2f(tileSize * 4.0f, tileSize * 2.0f));
@@ -47,7 +49,7 @@ void Game::init() {
 
 void Game::loadLocation(LocationID dest, sf::Vector2f spawnPoint) {
     MapLoader::saveCaveState(); // Remembers situation in the cave
-    GameObjects.clear(); // Deletes the old map, and entities
+    GameObjects.clear(); // Deletes the old map and entities
     currentLocation = dest;
 
     if (player) {
@@ -199,12 +201,46 @@ void Game::run() {
                 window.close();
             
             if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
-                // Toggle pause on Escape
+                // Unpause or quit settings
                 if (keyPressed->scancode == sf::Keyboard::Scancode::Escape && !player->checkIfDead()) {
-                    isPaused = !isPaused;
+                    if (isSettingsMenu) {
+                        isSettingsMenu = false; // Go back to pause if in settings
+                    } else {
+                        isPaused = !isPaused; // Toggle pause normally
+                    }
+                }
+
+                // Opens settings
+                if (isPaused && !player->checkIfDead()) {
+                    if (keyPressed->scancode == sf::Keyboard::Scancode::S) {
+                        isSettingsMenu = !isSettingsMenu;
+                        selectedSetting = 0; // Sets the top option when opening
+                    }
+                    
+                    if (isSettingsMenu) {
+                        // Navigate Up/Down
+                        if (keyPressed->scancode == sf::Keyboard::Scancode::Up || keyPressed->scancode == sf::Keyboard::Scancode::Down) {
+                            selectedSetting = (selectedSetting == 0) ? 1 : 0; // Toggle between 0 and 1
+                        }
+
+                        // Adjust Left/Right
+                        if (keyPressed->scancode == sf::Keyboard::Scancode::Left) {
+                            if (selectedSetting == 0) {
+                                if (MapLoader::entityMultiplier > 0.25f) MapLoader::entityMultiplier -= 0.05f; // Decrease entity count
+                            } else {
+                                if (MapLoader::difficultyMultiplier > 0.25f) MapLoader::difficultyMultiplier -= 0.05f; // Decrease difficulty
+                            }
+                        } else if (keyPressed->scancode == sf::Keyboard::Scancode::Right) {
+                            if (selectedSetting == 0) {
+                                 if (MapLoader::entityMultiplier < 1.95f) MapLoader::entityMultiplier += 0.05f; // Increase entity count
+                            } else {
+                                 if (MapLoader::difficultyMultiplier < 1.95f) MapLoader::difficultyMultiplier += 0.05f; // Increase difficulty
+                            }
+                        }
+                    }
                 }
                 
-                // Quit if 'Q' is pressed while paused or while dead
+                // Quit if 'Q' is pressed while paused or dead
                 if ((isPaused || player->checkIfDead()) && keyPressed->scancode == sf::Keyboard::Scancode::Q) {
                     window.close();
                 }
@@ -247,12 +283,16 @@ void Game::render() {
     }
 
     window.setView(camera); 
-    // Pause menu
+    // Pause and settings menu
     if (isPaused) {
         sf::Vector2f cameraCenter = camera.getCenter();
         sf::Vector2f cameraSize = camera.getSize();
 
-        textDisplay->drawPause(window, cameraCenter, cameraSize);
+        if (isSettingsMenu) {
+            textDisplay->drawSettings(window, cameraCenter, cameraSize, MapLoader::entityMultiplier, MapLoader::difficultyMultiplier, selectedSetting);
+        } else {
+            textDisplay->drawPause(window, cameraCenter, cameraSize);
+        }
     }
     // Restart menu
     if(player->checkIfDead()) {

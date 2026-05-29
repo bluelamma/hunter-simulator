@@ -67,7 +67,7 @@ Player::Player(float startX, float startY)
     experience = 0;
     score = 0;
     experienceThreshold = 200;
-    speed = 2000;
+    speed = 200;
     cash = 0.0f;
 
     base_shot_cooldown = 0.75f;

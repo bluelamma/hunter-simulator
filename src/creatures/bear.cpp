@@ -18,9 +18,9 @@ Bear::Bear(float startX, float startY, Player *player, bool boss)
             sprite.setTexture(texture, true); 
         }
 
-            hp = rand() % 1000 + 400;
+            hp = (rand() % 1000 + 400) * MapLoader::difficultyMultiplier;
             maxHp = hp;
-            difference = maxHp / 300.0f;
+            difference = maxHp / (300.0f * MapLoader::difficultyMultiplier);
             attackDamage = 70 * difference;
     } else {
             if (!texture.loadFromFile("../assets/textures/bear_black.png")) {
@@ -29,9 +29,9 @@ Bear::Bear(float startX, float startY, Player *player, bool boss)
             sprite.setTexture(texture, true); 
             }
 
-            hp = 2000;
+            hp = 2000 * MapLoader::difficultyMultiplier;
             maxHp = hp;
-            difference = maxHp / 450.0f;
+            difference = maxHp / (450.0f * MapLoader::difficultyMultiplier);
             attackDamage = 80 * difference;
     }
 

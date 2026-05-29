@@ -20,13 +20,13 @@ Hare::Hare(float startX, float startY, Player *player)
     sf::Vector2f harePos = sprite.getPosition();
     
     if (rand() % 10 < 1) {
-        hp = rand() % 50 + 40;
+        hp = (rand() % 50 + 40) * MapLoader::difficultyMultiplier;
     } else {
-        hp = rand() % 30 + 30;
+        hp = (rand() % 30 + 30) * MapLoader::difficultyMultiplier;
     }
     
     maxHp = hp;
-    difference = maxHp / 45.0f;
+    difference = maxHp / (45.0f * MapLoader::difficultyMultiplier);
     speed = 50.0f * difference;
 
     hitbox.setSize(sf::Vector2f(64.0f * 0.5f * difference, 64.0f * 0.5f * difference));

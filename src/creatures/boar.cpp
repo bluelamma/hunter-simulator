@@ -27,13 +27,13 @@ Boar::Boar(float startX, float startY, Player *player, int variant)
     sf::Vector2f boarPos = sprite.getPosition();
     
     if (rand() % 20 < 1 + variant) {
-        hp = rand() % 450 + 300;
+        hp = (rand() % 450 + 300) * MapLoader::difficultyMultiplier;
         maxHp = hp;
-        difference = maxHp / 150.0f;
+        difference = maxHp / (150.0f * MapLoader::difficultyMultiplier);
     } else {
-        hp = rand() % 150 + 100;
+        hp = (rand() % 150 + 100) * MapLoader::difficultyMultiplier;
         maxHp = hp;
-        difference = maxHp / 100.0f;
+        difference = maxHp / (100.0f * MapLoader::difficultyMultiplier);
     }
 
     if (rand() % 20 <= 1) {

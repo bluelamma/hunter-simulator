@@ -54,7 +54,10 @@ class Game {
 private:
     int tileSize = 64; // Used to make spawn point of things on specified tiles, load maps correctly
 
+    // Menu
     bool isPaused;
+    bool isSettingsMenu;
+    int selectedSetting;
 
     sf::RenderWindow window;
     std::vector<std::unique_ptr<GameObject>> GameObjects;

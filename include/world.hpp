@@ -16,12 +16,18 @@ private:
     static bool bearBossDefeated;    // Remembers if the boss is dead
     static Bear* activeBearBoss;     // Temporarily watches the bear while in the cave
 public:
+    // Adjustable in settings
+    static float entityMultiplier;
+    static float difficultyMultiplier;
+
+    // Maps
     static void loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint);
     static void loadCave(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint);
     static void loadHome(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, int tileSize, sf::Vector2f spawnPoint);
 
     static void saveCaveState();
 
+    // Spawn things
     static void spawnHare(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, sf::FloatRect spawnArea, int entityCount);
     static void spawnBoar(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, sf::FloatRect spawnArea, int entityCount, int variant);
     static void spawnBear(std::vector<std::unique_ptr<GameObject>> &gameObjects, Player *player, sf::FloatRect spawnArea, int entityCount);
@@ -57,6 +63,7 @@ public:
     bool isSpawn(float pixelX, float pixelY) const; // Everything can walk over the areas but creatures can't spawn
 };
 
+// Bushes, grass
 class Scenery : public GameObject {
 private:
     // Stores textures

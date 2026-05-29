@@ -1,6 +1,10 @@
 #include "../include/world.hpp"
 #include "../include/world_objects.hpp"
 
+// Can be changed in settings
+float MapLoader::entityMultiplier = 1.0f;
+float MapLoader::difficultyMultiplier = 1.0f;
+
 // ----------------------
 // ------ MapLoader -----
 // ----------------------
@@ -75,45 +79,45 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
     // sf::FloatRect({left_x, top_y}, {width, height})
     // Whole right side of the map
     sf::FloatRect hareSpawnpoint1({tileSize * 170.0f, tileSize * 30.0f}, {tileSize * 120.0f, tileSize * 150.0f});
-    spawnHare(gameObjects, player, hareSpawnpoint1, rand() % 31 + 30);
+    spawnHare(gameObjects, player, hareSpawnpoint1, (rand() % 31 + 30) * entityMultiplier);
 
     // Top, Left part of the map
     sf::FloatRect hareSpawnpoint2({tileSize * 20.0f, tileSize * 20.0f}, {tileSize * 180.0f, tileSize * 40.0f});
-    spawnHare(gameObjects, player, hareSpawnpoint2, rand() % 11 + 10);
+    spawnHare(gameObjects, player, hareSpawnpoint2, (rand() % 11 + 10) * entityMultiplier);
 
     // Close to the spawn area
     sf::FloatRect hareSpawnpoint3({tileSize * 170.0f, tileSize * 80.0f}, {tileSize * 120.0f, tileSize * 80.0f});
-    spawnHare(gameObjects, player, hareSpawnpoint3, rand() % 11 + 10);
+    spawnHare(gameObjects, player, hareSpawnpoint3, (rand() % 11 + 10) * entityMultiplier);
 
     // Boars
     // Right part of the map
     sf::FloatRect boarSpawnpoint1({tileSize * 180.0f, tileSize * 10.0f}, {tileSize * 120.0f, tileSize * 150.0f});
-    spawnBoar(gameObjects, player, boarSpawnpoint1, rand() % 26 + 30, 0);
+    spawnBoar(gameObjects, player, boarSpawnpoint1, (rand() % 26 + 30) * entityMultiplier, 0);
 
     // Right part of the map // bottom
     sf::FloatRect boarSpawnpoint2({tileSize * 170.0f, tileSize * 140.0f}, {tileSize * 100.0f, tileSize * 15.0f});
-    spawnBoar(gameObjects, player, boarSpawnpoint2, rand() % 3 + 1, 0);
+    spawnBoar(gameObjects, player, boarSpawnpoint2, (rand() % 3 + 1) * entityMultiplier, 0);
 
     // Black // right part // center
     sf::FloatRect boarSpawnpoint5({tileSize * 200.0f, tileSize * 40.0f}, {tileSize * 60.0f, tileSize * 40.0f});
-    spawnBoar(gameObjects, player, boarSpawnpoint5, rand() % 3 + 2, 1);
+    spawnBoar(gameObjects, player, boarSpawnpoint5, (rand() % 3 + 2) * entityMultiplier, 1);
 
     // Left part of the map
     sf::FloatRect boarSpawnpoint3({tileSize * 20.0f, tileSize * 20.0f}, {tileSize * 160.0f, tileSize * 100.0f});
-    spawnBoar(gameObjects, player, boarSpawnpoint3, rand() % 36 + 50, 0);
+    spawnBoar(gameObjects, player, boarSpawnpoint3, (rand() % 36 + 50) * entityMultiplier, 0);
 
     // Black // Left part of the map
     sf::FloatRect boarSpawnpoint4({tileSize * 10.0f, tileSize * 20.0f}, {tileSize * 150.0f, tileSize * 100.0f});
-    spawnBoar(gameObjects, player, boarSpawnpoint4, rand() % 11 + 20, 1);
+    spawnBoar(gameObjects, player, boarSpawnpoint4, (rand() % 11 + 20) * entityMultiplier, 1);
 
     // Bears
     // Left part of the map
     sf::FloatRect bearSpawnpoint1({tileSize * 20.0f, tileSize * 20.0f}, {tileSize * 160.0f, tileSize * 100.0f});
-    spawnBear(gameObjects, player, bearSpawnpoint1, 4);
+    spawnBear(gameObjects, player, bearSpawnpoint1, 4 * entityMultiplier);
 
     // Right part of the map
     sf::FloatRect bearSpawnpoint2({tileSize * 180.0f, tileSize * 20.0f}, {tileSize * 120.0f, tileSize * 100.0f});
-    spawnBear(gameObjects, player, bearSpawnpoint2, 2);
+    spawnBear(gameObjects, player, bearSpawnpoint2, 2 * entityMultiplier);
 
     // --- Scenery ---
 
@@ -231,7 +235,7 @@ void MapLoader::spawnHare(std::vector<std::unique_ptr<GameObject>> &gameObjects,
             float feetY = spawnY + offsetY;
 
             // Checks position at the feet
-            if (GameObject::world != nullptr && !GameObject::world->isSolid(feetX, feetY, false, false)) {
+            if (GameObject::world != nullptr && !GameObject::world->isSolid(feetX, feetY, false, true)) {
                 validSpotFound = true;
                 break; 
             }
@@ -267,7 +271,7 @@ void MapLoader::spawnBoar(std::vector<std::unique_ptr<GameObject>> &gameObjects,
             float feetY = spawnY + offsetY;
 
             // Check if the spot is valid based on where the feet are
-            if (GameObject::world != nullptr && !GameObject::world->isSolid(feetX, feetY, false, false) && !GameObject::world->isSpawn(feetX, feetY)) {
+            if (GameObject::world != nullptr && !GameObject::world->isSolid(feetX, feetY, false, true) && !GameObject::world->isSpawn(feetX, feetY)) {
                 validSpotFound = true;
                 break; 
             }
@@ -303,7 +307,7 @@ void MapLoader::spawnBear(std::vector<std::unique_ptr<GameObject>> &gameObjects,
             float feetY = spawnY + offsetY;
 
             // Check if the spot is valid based on where the feet are
-            if (GameObject::world != nullptr && !GameObject::world->isSolid(feetX, feetY, false, false) && !GameObject::world->isSpawn(feetX, feetY)) {
+            if (GameObject::world != nullptr && !GameObject::world->isSolid(feetX, feetY, false, true) && !GameObject::world->isSpawn(feetX, feetY)) {
                 validSpotFound = true;
                 break; 
             }
@@ -427,7 +431,7 @@ TileMap::TileMap(const std::string &textureFile, const std::string &csvFile, int
             triangles[5].position = sf::Vector2f((i + 1) * tileSize, (j + 1) * tileSize);
 
             // Defines the 6 corners of the two triangles on the texture
-            // Inset fixed blue streaks appearing between tiles, it prevents the gpu from taking pixels of neighbouring tile
+            // Inset fixed blue streaks appearing between tiles
             float inset = 0.1f; 
 
             // Triangle 1 (Top-Left, Top-Right, Bottom-Left)

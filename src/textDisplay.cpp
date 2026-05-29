@@ -1,13 +1,13 @@
 #include "../include/textDisplay.hpp"
 
-TextDisplay::TextDisplay(Player *player) : player(player), pauseText(font), restartText(font), cashText(font) {
+TextDisplay::TextDisplay(Player *player) : player(player), pauseText(font), restartText(font), cashText(font), settingsText(font) {
     if (!font.openFromFile("../assets/fonts/pixelFont.ttf")) { 
         std::cerr << "Failed to load the font\n";
     }
 
     // -- Pause -- 
     pauseText.setFont(font);
-    pauseText.setString("PAUSED\n\nPress ESC to Resume\nPress Q to Quit");
+    pauseText.setString("PAUSED\n\nPress ESC to Resume\nPress S for Settings\nPress Q to Quit");
     pauseText.setCharacterSize(48);
     pauseText.setFillColor(sf::Color::White);
 
@@ -87,8 +87,12 @@ void TextDisplay::drawHud(sf::RenderWindow& window) {
 
 void TextDisplay::drawPause(sf::RenderWindow &window, sf::Vector2f cameraCenter, sf::Vector2f cameraSize) {
     pauseText.setFont(font);
-    pauseText.setString("PAUSED\n\nPress ESC to Resume\nPress Q to Quit");
-    pauseText.setCharacterSize(48);
+    pauseText.setString("PAUSED\n\nPress ESC to Resume\nPress S for Settings\nPress Q to Quit");
+    
+    // Scales text down if the camera is zoomed in (home, cave)
+    unsigned int textSize = (cameraSize.y < 400.0f) ? 24 : 48;
+    pauseText.setCharacterSize(textSize);
+    
     pauseText.setFillColor(sf::Color::White);
 
     // Centers the text alignment
@@ -117,4 +121,42 @@ void TextDisplay::drawRestart(sf::RenderWindow &window, sf::Vector2f cameraCente
         
     window.draw(restartOverlay);
     window.draw(restartText);
+}
+
+void TextDisplay::drawSettings(sf::RenderWindow &window, sf::Vector2f cameraCenter, sf::Vector2f cameraSize, float entMult, float diffMult, int selectedSetting) {
+    settingsText.setFont(font);
+    
+    std::stringstream ss;
+    ss << "SETTINGS\n\n";
+    
+    // Draws an arrow next to EntityMultiplier
+    if (selectedSetting == 0) ss << "> ";
+    else ss << "  ";
+    ss << "Entity Spawn Rate: " << std::fixed << std::setprecision(2) << entMult << "x\n";
+    
+    // Draws cursor next to Difficulty
+    if (selectedSetting == 1) ss << "> ";
+    else ss << "  ";
+    ss << "Difficulty (HP): " << std::fixed << std::setprecision(2) << diffMult << "x\n\n";
+    
+    ss << "(UP/DOWN to select, LEFT/RIGHT to change)\n\n"
+       << "Press S or ESC to Go Back";
+       
+    settingsText.setString(ss.str());
+
+    // Scales the text if necessary
+    unsigned int textSize = (cameraSize.y < 400.0f) ? 24 : 48;
+    settingsText.setCharacterSize(textSize);
+
+    settingsText.setFillColor(sf::Color::White);
+
+    sf::FloatRect bounds = settingsText.getLocalBounds();
+    settingsText.setOrigin({bounds.size.x / 2.0f, bounds.size.y / 2.0f});
+
+    pauseOverlay.setSize(cameraSize);
+    pauseOverlay.setPosition(cameraCenter - (cameraSize / 2.0f));
+    settingsText.setPosition(cameraCenter);
+
+    window.draw(pauseOverlay);
+    window.draw(settingsText);
 }
