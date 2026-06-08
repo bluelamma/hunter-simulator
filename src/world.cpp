@@ -13,7 +13,7 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
 
     // Map
     auto map = std::make_unique<TileMap>("../assets/maps/tiles_overworld.png", "../assets/maps/overworld.csv", 300, 150, tileSize, std::vector<int>{3}, 3, std::vector<int>{2, 4, 5});
-    TileMap* tileMap = map.get(); // Save a pointer so we can add collision boxes
+    TileMap* tileMap = map.get(); // Saves a pointer so I can add collision boxes
     GameObject::world = map.get(); 
     gameObjects.emplace_back(std::move(map));
 

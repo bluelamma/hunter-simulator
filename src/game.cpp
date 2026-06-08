@@ -35,6 +35,7 @@ Game::Game()
 Game::~Game() = default;
 
 void Game::init() {
+sf::Image icon;
     // Makes random random
     srand(static_cast<unsigned int>(time(nullptr)));
 
