@@ -124,7 +124,7 @@ void MapLoader::loadOverworld(std::vector<std::unique_ptr<GameObject>> &gameObje
     // Assets
     std::vector<std::string> grassVariants = {
         "../assets/grass/grass0.png", "../assets/grass/grass1.png", "../assets/grass/grass2.png",
-        "../assets/grass/grass3.png", "../assets/grass/grass4.png"
+        "../assets/grass/grass3.png"
     };
     std::vector<std::string> bushVariants = {
         "../assets/grass/bush0.png", "../assets/grass/bush1.png"
