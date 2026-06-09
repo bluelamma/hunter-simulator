@@ -3,22 +3,21 @@
     "tasks": [
         {
             "type": "cppbuild",
-            "label": "C/C++: g++.exe RELEASE build with SFML",
-            "command": "g++.exe",
+            "label": "Build Hunter Simulator",
+            "command": "g++",
             "args": [
-                "-fdiagnostics-color=always",
-                "-O3",
-                "-mwindows",
-                "-I${workspaceFolder}/include",
-                "-L${workspaceFolder}/lib",
+                "-g",
                 "${workspaceFolder}/src/*.cpp",
                 "${workspaceFolder}/src/creatures/*.cpp",
-                "-o",
-                "${workspaceFolder}/bin/main.exe",
+                "-I", "${workspaceFolder}/include",
+                "-I", "C:/SFML/include",
+                "-L", "C:/SFML/lib",
+                "-o", "${workspaceFolder}/bin/main.exe",
+                
                 "-lsfml-graphics",
                 "-lsfml-window",
                 "-lsfml-system",
-                "-lsfml-audio"
+                "-lsfml-audio" 
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
@@ -30,7 +29,7 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "detail": "compiler: C:/msys64/ucrt64/bin/g++.exe"
+            "detail": "Builds the project using precompiled SFML."
         }
     ]
 }
