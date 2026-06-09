@@ -151,7 +151,7 @@ void MapLoader::loadCave(std::vector<std::unique_ptr<GameObject>> &gameObjects, 
     // Cave exit (to go back to overworld)
     gameObjects.emplace_back(std::make_unique<SwitchLocation>(
         tileSize * 20, tileSize * 79, // Spawn point of the object
-        "objects/cave_exit.png",
+        "../assets/objects/cave_exit.png",
         player, 
         LocationID::Overworld, 
         sf::Vector2f({tileSize * 28.0f, tileSize * 134.0f}), // Spawn point of the player after interaction
